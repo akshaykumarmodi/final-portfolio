@@ -1,20 +1,26 @@
 /**
  * Background Audio Controller for Akshay Kumar Modi's Portfolio.
- * Plays the exact user-uploaded MP3:
- * "Peaceful Piano + Nature Sounds 20 Minutes of Calm for Sleep.mp3"
+ * Plays the exact peaceful piano soundscape continuously in a seamless loop.
  *
  * Rules:
  * - Plays the exact uploaded track continuously in a seamless loop.
- * - No procedural sound effects or synthetic audio layers.
  * - Single source of truth for ON/OFF state and user preference.
- * - Respects autoplay restrictions and unlocks on first user interaction.
+ * - Respects modern browser autoplay restrictions and unlocks on first user interaction.
+ * - Resilient multi-tier audio source fallbacks for reliable CDN/Vercel static asset delivery.
  * - Preserves playback position on pause so toggling ON resumes smoothly.
  */
 
 type Listener = (isPlaying: boolean) => void;
 
 const STORAGE_KEY = "akm-sound";
-const AUDIO_SRC = "/audio/Peaceful%20Piano%20+%20Nature%20Sounds%2020%20Minutes%20of%20Calm%20for%20Sleep.mp3";
+
+// Web-safe static asset paths with reliable MIME support across CDNs/Vercel
+const AUDIO_SOURCES = [
+  "/audio/peaceful-piano-ambient.mp3",
+  "/audio/peaceful-piano.mp3",
+  "/audio/Peaceful%20Piano%20%2B%20Nature%20Sounds%2020%20Minutes%20of%20Calm%20for%20Sleep.mp3",
+];
+
 const TARGET_VOLUME = 0.75; // Comfortable, gentle ambient volume
 
 class SoundEngine {
@@ -23,6 +29,7 @@ class SoundEngine {
   private unlockCleanup: (() => void) | null = null;
   private _isPlaying = false;
   private fadeRaf = 0;
+  private currentSourceIndex = 0;
 
   get enabled(): boolean {
     return this._isPlaying;
@@ -60,10 +67,10 @@ class SoundEngine {
 
     try {
       const audio = new Audio();
-      audio.src = AUDIO_SRC;
       audio.preload = "auto";
       audio.loop = true;
       audio.volume = 0;
+      audio.src = AUDIO_SOURCES[this.currentSourceIndex] ?? AUDIO_SOURCES[0] ?? "";
 
       // Keep state synchronized with native media events
       audio.addEventListener("play", () => {
@@ -75,6 +82,21 @@ class SoundEngine {
         if (audio.paused && audio.volume === 0) {
           this._isPlaying = false;
           this.emit();
+        }
+      });
+
+      // Automatic source fallback in case a CDN fails to serve a specific path
+      audio.addEventListener("error", () => {
+        if (this.currentSourceIndex < AUDIO_SOURCES.length - 1) {
+          this.currentSourceIndex += 1;
+          const nextSrc = AUDIO_SOURCES[this.currentSourceIndex];
+          if (nextSrc) {
+            audio.src = nextSrc;
+            audio.load();
+            if (this._isPlaying) {
+              audio.play().catch(() => {});
+            }
+          }
         }
       });
 
@@ -97,36 +119,44 @@ class SoundEngine {
 
     if (!this.getStoredPreference()) return;
 
-    const unlock = async () => {
-      this.cleanupUnlockListeners();
-
-      if (!this.getStoredPreference()) return;
+    const unlock = () => {
+      if (!this.getStoredPreference()) {
+        this.cleanupUnlockListeners();
+        return;
+      }
 
       const a = this.ensureAudio();
-      if (a && a.paused) {
-        try {
-          a.volume = 0;
-          const p = a.play();
-          if (p !== undefined && typeof p.then === "function") {
-            await p;
-          }
-          this.fadeTo(TARGET_VOLUME, 1000);
-          this._isPlaying = true;
-          this.emit();
-        } catch {
-          // If still blocked, re-arm
-          this.registerUnlockListeners();
+      if (!a) return;
+
+      if (a.paused) {
+        a.volume = 0;
+        const playPromise = a.play();
+        if (playPromise !== undefined && typeof playPromise.then === "function") {
+          playPromise
+            .then(() => {
+              this.cleanupUnlockListeners();
+              this.fadeTo(TARGET_VOLUME, 1000);
+              this._isPlaying = true;
+              this.emit();
+            })
+            .catch(() => {
+              // Wait for next permitted user gesture
+            });
         }
+      } else {
+        this.cleanupUnlockListeners();
+        this._isPlaying = true;
+        this.emit();
       }
     };
 
+    // Only genuine user activation gestures allowed by browser autoplay policy
     const events = [
       "pointerdown",
       "touchstart",
-      "keydown",
+      "touchend",
       "click",
-      "wheel",
-      "scroll",
+      "keydown",
     ];
 
     const cleanup = () => {
@@ -216,11 +246,11 @@ class SoundEngine {
       const p = audio.play();
       if (p !== undefined && typeof p.then === "function") {
         await p;
+        this.fadeTo(TARGET_VOLUME, 1200);
+        this._isPlaying = true;
+        this.emit();
+        return;
       }
-      this.fadeTo(TARGET_VOLUME, 1200);
-      this._isPlaying = true;
-      this.emit();
-      return;
     } catch {
       // Browser blocked audible autoplay without user interaction
     }
@@ -259,9 +289,12 @@ class SoundEngine {
     const audio = this.ensureAudio();
     if (audio) {
       try {
-        const p = audio.play();
-        if (p !== undefined && typeof p.then === "function") {
-          await p;
+        if (audio.paused) {
+          audio.volume = 0;
+          const p = audio.play();
+          if (p !== undefined && typeof p.then === "function") {
+            await p;
+          }
         }
         this.fadeTo(TARGET_VOLUME, 600);
         this._isPlaying = true;

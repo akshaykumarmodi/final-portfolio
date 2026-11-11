@@ -41,9 +41,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
-    if (!sound.isPlaying && sound.autoStart && (!sound.getStoredPreference || sound.getStoredPreference())) {
-      void sound.autoStart();
-    }
     const container = containerRef.current;
     if (!container) return;
 

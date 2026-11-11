@@ -73,15 +73,52 @@ export function Contact() {
     play("click");
 
     try {
-      await sendContactMessageFn({
-        data: {
-          name: name.trim(),
-          email: email.trim(),
-          subject: subject.trim() || "Portfolio Inquiry",
-          message: message.trim(),
-          ...(honeypot ? { honeypot } : {}),
-        },
-      });
+      const payload = {
+        name: name.trim(),
+        email: email.trim(),
+        subject: subject.trim() || "Portfolio Inquiry",
+        message: message.trim(),
+        ...(honeypot ? { honeypot } : {}),
+      };
+
+      // 1. Primary: Secure Vercel Serverless API route (/api/contact)
+      let sent = false;
+      let errorText = "";
+
+      try {
+        const response = await fetch("/api/contact", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const resData = (await response.json().catch(() => ({}))) as {
+          success?: boolean;
+          message?: string;
+          error?: string;
+        };
+
+        if (response.ok && resData?.success !== false) {
+          sent = true;
+        } else {
+          errorText = resData?.error || resData?.message || `Server returned ${response.status}`;
+        }
+      } catch {
+        // Fallback to internal server function if running locally without standalone /api
+        try {
+          await sendContactMessageFn({ data: payload });
+          sent = true;
+        } catch (fnErr) {
+          errorText = fnErr instanceof Error ? fnErr.message : "Failed to deliver message";
+        }
+      }
+
+      if (!sent) {
+        throw new Error(errorText || "Failed to send message. Please try emailing directly.");
+      }
 
       setIsSubmitted(true);
       play("click");

@@ -143,5 +143,63 @@ describe("Self-Managed Contact Form & SMTP Notification System", () => {
     const inboxAfter = await db.getContactSubmissions();
     expect(inboxAfter.some((c) => c.id === submission.id)).toBe(false);
   });
+
+  it("handles Vercel Serverless /api/contact route with validation and method protection", async () => {
+    const contactHandler = (await import("../../api/contact")).default;
+
+    // Helper to create mock Node req/res
+    const createMockReqRes = (method: string, body: any) => {
+      let statusCode = 200;
+      let responseData: any = null;
+      const headers: Record<string, string> = {};
+
+      const req: any = {
+        method,
+        body,
+        on: (event: string, callback: any) => {
+          if (event === "end") callback();
+        },
+      };
+
+      const res: any = {
+        setHeader: (key: string, value: string) => {
+          headers[key] = value;
+        },
+        status: (code: number) => {
+          statusCode = code;
+          return res;
+        },
+        json: (data: any) => {
+          responseData = data;
+          return res;
+        },
+        end: () => res,
+      };
+
+      return { req, res, getStatus: () => statusCode, getData: () => responseData };
+    };
+
+    // 1. Method Not Allowed (GET)
+    const getTest = createMockReqRes("GET", {});
+    await contactHandler(getTest.req, getTest.res);
+    expect(getTest.getStatus()).toBe(405);
+    expect(getTest.getData().error).toContain("Method GET Not Allowed");
+
+    // 2. Validation error on missing fields
+    const invalidTest = createMockReqRes("POST", { name: "A", email: "bad", message: "hi" });
+    await contactHandler(invalidTest.req, invalidTest.res);
+    expect(invalidTest.getStatus()).toBe(400);
+
+    // 3. Honeypot traps bots gracefully
+    const botTest = createMockReqRes("POST", {
+      name: "Bot",
+      email: "bot@spam.com",
+      message: "Spam message here",
+      honeypot: "http://bot.com",
+    });
+    await contactHandler(botTest.req, botTest.res);
+    expect(botTest.getStatus()).toBe(200);
+    expect(botTest.getData().success).toBe(true);
+  });
 });
 

@@ -31,6 +31,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
+    sound.unlock?.();
     sound.play?.("click");
     onEnterPortfolio?.();
     scrollToSection("home");
@@ -38,6 +39,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
+    sound.unlock?.();
     const container = containerRef.current;
     if (!container) return;
 

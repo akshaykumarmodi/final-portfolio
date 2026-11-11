@@ -84,6 +84,7 @@ export function Nav() {
 
   // Section navigation handler
   const go = useCallback((id: string) => {
+    sound.unlock?.();
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
     sound.play("click");

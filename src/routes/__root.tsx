@@ -131,6 +131,27 @@ function RootShell({ children }: { children: ReactNode }) {
           aria-hidden="true"
           style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var a = document.getElementById('akm-bg-audio');
+                  if (a && localStorage.getItem('akm-sound') !== 'off') {
+                    a.volume = 0.75;
+                    var p = a.play();
+                    if (p !== undefined) {
+                      p.catch(function() {
+                        a.muted = true;
+                        a.play().catch(function(){});
+                      });
+                    }
+                  }
+                } catch(e){}
+              })();
+            `,
+          }}
+        />
         {children}
         <Scripts />
       </body>

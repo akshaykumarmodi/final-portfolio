@@ -95,7 +95,7 @@ describe("Admin & Content Persistence Engine", () => {
     it("persists project reordering and deletion across simulated refresh", async () => {
       const { result, unmount } = renderHook(() => useProjects());
 
-      const projectToDelete = result.current.allProjects[0];
+      const projectToDelete = result.current.allProjects[0]!;
       expect(projectToDelete).toBeDefined();
 
       await act(async () => {

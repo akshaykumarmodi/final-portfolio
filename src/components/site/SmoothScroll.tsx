@@ -24,6 +24,10 @@ export function SmoothScroll() {
         });
 
         setLenis(lenisInstance);
+
+        lenisInstance.on("scroll", () => {
+          import("@/lib/sound").then(({ sound }) => sound.unlock()).catch(() => {});
+        });
       })
       .catch(() => {});
 

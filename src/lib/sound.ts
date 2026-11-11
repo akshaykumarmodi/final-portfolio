@@ -258,15 +258,19 @@ class SoundEngine {
     if (audio) {
       audio.volume = TARGET_VOLUME;
       audio.muted = false;
-      try {
-        const p = audio.play();
-        if (p !== undefined && typeof p.then === "function") {
-          await p;
+      if (audio.paused) {
+        try {
+          const p = audio.play();
+          if (p !== undefined && typeof p.then === "function") {
+            await p;
+          }
+          this._isPlaying = true;
+        } catch {
+          this._isPlaying = false;
+          this.registerUnlockListeners();
         }
+      } else {
         this._isPlaying = true;
-      } catch {
-        this._isPlaying = false;
-        this.registerUnlockListeners();
       }
     } else {
       this._isPlaying = true;

@@ -68,7 +68,9 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
     sound.play?.("click");
-    void sound.turnOn();
+    if (sound.enabled && !sound.isPlaying && typeof sound.turnOn === "function") {
+      void sound.turnOn();
+    }
     onEnterPortfolio?.();
     scrollToSection("home");
   }, [onEnterPortfolio]);

@@ -8,7 +8,7 @@ export function useSound() {
   useEffect(() => {
     const unsub = sound.subscribe(setEnabled);
     setEnabled(sound.enabled);
-    if (sound.getStoredPreference() && !sound.enabled) {
+    if (sound.getStoredPreference() && !sound.isPlaying) {
       void sound.autoStart();
     }
     return unsub;

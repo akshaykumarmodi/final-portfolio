@@ -38,6 +38,7 @@ import {
   Inbox,
   MailCheck,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useAdmin } from "@/hooks/use-admin";
 import { useProjects } from "@/hooks/use-projects";
@@ -81,6 +82,7 @@ function AdminPage() {
     updateProject,
     deleteProject,
     reorderProjects,
+    resetProjectsToDefault,
   } = useProjects();
 
   const {
@@ -90,6 +92,7 @@ function AdminPage() {
     updateMilestone,
     deleteMilestone,
     reorderMilestones,
+    resetMilestonesToDefault,
   } = useJourney();
 
   // Active section tab
@@ -102,21 +105,40 @@ function AdminPage() {
   const [selectedMessage, setSelectedMessage] = useState<ContactSubmission | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
+  // Settings Cache Key
+  const SETTINGS_STORAGE_KEY = "akm_portfolio_settings";
+
+  const getCachedSettings = useCallback((): Partial<SiteSettings> => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const initialSettings = getCachedSettings();
+
   // SMTP Settings & Live Engine state
   const [smtpStatus, setSmtpStatus] = useState<SmtpStatusResult | null>(null);
-  const [smtpHost, setSmtpHost] = useState("");
-  const [smtpPort, setSmtpPort] = useState("465");
-  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpHost, setSmtpHost] = useState(initialSettings.smtpHost || "");
+  const [smtpPort, setSmtpPort] = useState(
+    initialSettings.smtpPort ? String(initialSettings.smtpPort) : "465",
+  );
+  const [smtpUser, setSmtpUser] = useState(initialSettings.smtpUser || "");
   const [smtpPassword, setSmtpPassword] = useState("");
-  const [smtpFrom, setSmtpFrom] = useState("");
-  const [receiverEmail, setReceiverEmail] = useState("akshay123modi@gmail.com");
+  const [smtpFrom, setSmtpFrom] = useState(initialSettings.smtpFrom || "");
+  const [receiverEmail, setReceiverEmail] = useState(
+    initialSettings.notificationEmail || "akshay123modi@gmail.com",
+  );
   const [isSmtpConfigOpen, setIsSmtpConfigOpen] = useState(false);
   const [savingSmtp, setSavingSmtp] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
   const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Optional legacy backup webhook state
-  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState(initialSettings.googleWebhookUrl || "");
   const [savingSettings, setSavingSettings] = useState(false);
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -145,6 +167,13 @@ function AdminPage() {
       if (settings.smtpFrom) setSmtpFrom(settings.smtpFrom);
       if (settings.notificationEmail) setReceiverEmail(settings.notificationEmail);
       if (settings.googleWebhookUrl) setWebhookUrl(settings.googleWebhookUrl);
+
+      // Cache to localStorage
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        } catch {}
+      }
     } catch (err) {
       console.warn("Failed to load contacts or settings:", err);
     } finally {
@@ -189,6 +218,23 @@ function AdminPage() {
         message: "SMTP notification credentials saved securely to backend storage!",
       });
       setSmtpPassword("");
+
+      if (typeof window !== "undefined") {
+        try {
+          const current = getCachedSettings();
+          localStorage.setItem(
+            SETTINGS_STORAGE_KEY,
+            JSON.stringify({
+              ...current,
+              smtpHost: smtpHost.trim(),
+              smtpPort: isNaN(portNum) ? 465 : portNum,
+              smtpUser: smtpUser.trim(),
+              smtpFrom: smtpFrom.trim(),
+              notificationEmail: receiverEmail.trim() || "akshay123modi@gmail.com",
+            }),
+          );
+        } catch {}
+      }
     } catch (err: unknown) {
       setSmtpTestResult({
         success: false,
@@ -293,6 +339,15 @@ function AdminPage() {
         },
       });
       setTestResult({ success: true, message: "Google Apps Script Webhook URL saved successfully!" });
+      if (typeof window !== "undefined") {
+        try {
+          const current = getCachedSettings();
+          localStorage.setItem(
+            SETTINGS_STORAGE_KEY,
+            JSON.stringify({ ...current, googleWebhookUrl: webhookUrl.trim() }),
+          );
+        } catch {}
+      }
     } catch (err: unknown) {
       setTestResult({ success: false, message: err instanceof Error ? err.message : "Failed to save settings." });
     } finally {
@@ -637,23 +692,44 @@ function AdminPage() {
             </div>
 
             {/* Header + Add Project Button */}
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl sm:text-2xl font-bold text-white">
-                Projects Inventory ({allProjects.length})
-              </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-white">
+                  Projects Inventory ({allProjects.length})
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Edits are permanently saved locally and on the server.
+                </p>
+              </div>
 
-              <Button
-                variant="hero"
-                size="default"
-                onClick={() => {
-                  setEditingProject(null);
-                  setProjectDialogOpen(true);
-                }}
-                className="gap-2 shadow-[0_0_20px_rgba(168,85,247,0.4)]"
-              >
-                <Plus className="size-4" />
-                Add New Project
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={async () => {
+                    if (window.confirm("Reset all projects to original defaults? This will clear custom project modifications.")) {
+                      await resetProjectsToDefault();
+                    }
+                  }}
+                  className="border-white/10 hover:border-white/20 text-slate-300 text-xs gap-1.5"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Reset Defaults
+                </Button>
+
+                <Button
+                  variant="hero"
+                  size="default"
+                  onClick={() => {
+                    setEditingProject(null);
+                    setProjectDialogOpen(true);
+                  }}
+                  className="gap-2 shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+                >
+                  <Plus className="size-4" />
+                  Add New Project
+                </Button>
+              </div>
             </div>
 
             {/* Projects List */}
@@ -775,7 +851,7 @@ function AdminPage() {
             </div>
 
             {/* Header + Add Milestone Button */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl sm:text-2xl font-bold text-white">
                   Journey Timeline Milestones ({allMilestones.length})
@@ -785,18 +861,34 @@ function AdminPage() {
                 </p>
               </div>
 
-              <Button
-                variant="hero"
-                size="default"
-                onClick={() => {
-                  setEditingMilestone(null);
-                  setMilestoneDialogOpen(true);
-                }}
-                className="gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
-              >
-                <Plus className="size-4" />
-                Add Milestone
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={async () => {
+                    if (window.confirm("Reset all journey milestones to original defaults? This will clear custom milestone modifications.")) {
+                      await resetMilestonesToDefault();
+                    }
+                  }}
+                  className="border-white/10 hover:border-white/20 text-slate-300 text-xs gap-1.5"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Reset Defaults
+                </Button>
+
+                <Button
+                  variant="hero"
+                  size="default"
+                  onClick={() => {
+                    setEditingMilestone(null);
+                    setMilestoneDialogOpen(true);
+                  }}
+                  className="gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+                >
+                  <Plus className="size-4" />
+                  Add Milestone
+                </Button>
+              </div>
             </div>
 
             {/* Milestones List */}

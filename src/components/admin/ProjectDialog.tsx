@@ -135,15 +135,20 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
           const base64Data = reader.result as string;
           const token = typeof window !== "undefined" ? localStorage.getItem("akm_admin_token") || undefined : undefined;
 
-          const result = await uploadImageFn({
-            data: {
-              ...(token ? { token } : {}),
-              filename: file.name,
-              mimeType: file.type,
-              base64Data,
-            },
-          });
-          resolve(result.url);
+          try {
+            const result = await uploadImageFn({
+              data: {
+                ...(token ? { token } : {}),
+                filename: file.name,
+                mimeType: file.type,
+                base64Data,
+              },
+            });
+            resolve(result.url);
+          } catch (uploadErr) {
+            console.warn("Backend image upload notice, applying data URL fallback:", uploadErr);
+            resolve(base64Data);
+          }
         } catch (err) {
           reject(err);
         }

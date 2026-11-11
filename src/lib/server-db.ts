@@ -57,7 +57,42 @@ let memoryDb: DbSchema = {
 
 let isInitialized = false;
 
-// Helpers to interact with local filesystem in Node environment
+// Helpers to interact with filesystem and environment in Node environment
+async function getNodeModules() {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const os = await import("node:os");
+  const crypto = await import("node:crypto");
+  return { fs, path, os, crypto };
+}
+
+async function getDataPaths() {
+  const { path, os } = await getNodeModules();
+  const isServerless = Boolean(
+    process.env["VERCEL"] ||
+    process.env["AWS_LAMBDA_FUNCTION_NAME"] ||
+    process.env["NOW_REGION"]
+  );
+
+  const baseDir = isServerless
+    ? path.join(os.tmpdir(), "akm-portfolio-data")
+    : path.join(process.cwd(), "data");
+
+  const bundledDir = path.join(process.cwd(), "data");
+  const dbPath = path.join(baseDir, "portfolio-db.json");
+  const bundledDbPath = path.join(bundledDir, "portfolio-db.json");
+
+  return {
+    isServerless,
+    baseDir,
+    bundledDir,
+    dbPath,
+    bundledDbPath,
+    dataUploads: path.join(baseDir, "uploads"),
+    publicUploads: path.join(process.cwd(), "public", "uploads"),
+  };
+}
+
 async function initDb() {
   if (isInitialized) return;
   isInitialized = true;
@@ -65,68 +100,87 @@ async function initDb() {
   if (typeof window !== "undefined") return;
 
   try {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const dataDir = path.join(process.cwd(), "data");
-    const dbPath = path.join(dataDir, "portfolio-db.json");
+    const { fs, path } = await getNodeModules();
+    const { baseDir, dbPath, bundledDbPath, dataUploads, publicUploads } = await getDataPaths();
 
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    if (!fs.existsSync(baseDir)) {
+      try {
+        fs.mkdirSync(baseDir, { recursive: true });
+      } catch (err) {
+        console.warn("[server-db] Base directory create warning:", err);
+      }
     }
 
-    if (fs.existsSync(dbPath)) {
-      const raw = fs.readFileSync(dbPath, "utf8");
-      const parsed = JSON.parse(raw);
-      if (parsed.projects && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
-        memoryDb.projects = parsed.projects;
-      }
-      if (parsed.journey && Array.isArray(parsed.journey) && parsed.journey.length > 0) {
-        memoryDb.journey = parsed.journey;
-      }
-      if (parsed.contacts && Array.isArray(parsed.contacts)) {
-        memoryDb.contacts = parsed.contacts.map((c: any) => ({
-          id: c.id,
-          name: c.name || "Anonymous",
-          email: c.email || "no-email@provided.com",
-          subject: c.subject || "Portfolio Inquiry",
-          message: c.message || "",
-          createdAt: c.createdAt || new Date().toISOString(),
-          read: typeof c.read === "boolean" ? c.read : false,
-          deliveryStatus: c.deliveryStatus || "SENT",
-          ...(c.deliveryError ? { deliveryError: c.deliveryError } : {}),
-        }));
-      }
-      if (parsed.adminTokens) {
-        memoryDb.adminTokens = parsed.adminTokens;
-      }
-      if (parsed.settings) {
-        memoryDb.settings = parsed.settings;
+    // Attempt to load from active dbPath first; fallback to bundledDbPath
+    const sourcePath = fs.existsSync(dbPath)
+      ? dbPath
+      : fs.existsSync(bundledDbPath)
+        ? bundledDbPath
+        : null;
+
+    if (sourcePath) {
+      try {
+        const raw = fs.readFileSync(sourcePath, "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed.projects && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+          memoryDb.projects = parsed.projects;
+        }
+        if (parsed.journey && Array.isArray(parsed.journey) && parsed.journey.length > 0) {
+          memoryDb.journey = parsed.journey;
+        }
+        if (parsed.contacts && Array.isArray(parsed.contacts)) {
+          memoryDb.contacts = parsed.contacts.map((c: any) => ({
+            id: c.id,
+            name: c.name || "Anonymous",
+            email: c.email || "no-email@provided.com",
+            subject: c.subject || "Portfolio Inquiry",
+            message: c.message || "",
+            createdAt: c.createdAt || new Date().toISOString(),
+            read: typeof c.read === "boolean" ? c.read : false,
+            deliveryStatus: c.deliveryStatus || "SENT",
+            ...(c.deliveryError ? { deliveryError: c.deliveryError } : {}),
+          }));
+        }
+        if (parsed.adminTokens) {
+          memoryDb.adminTokens = { ...memoryDb.adminTokens, ...parsed.adminTokens };
+        }
+        if (parsed.settings) {
+          memoryDb.settings = parsed.settings;
+        }
+      } catch (e) {
+        console.warn("[server-db] Failed to parse db json:", e);
       }
     } else {
-      // First run: save bundled baseline to disk
-      fs.writeFileSync(dbPath, JSON.stringify(memoryDb, null, 2), "utf8");
+      // First run: save bundled baseline to disk if writable
+      try {
+        fs.writeFileSync(dbPath, JSON.stringify(memoryDb, null, 2), "utf8");
+      } catch {}
     }
 
     // Ensure upload directories exist and sync files from data/uploads to public/uploads
-    const publicUploads = path.join(process.cwd(), "public", "uploads");
-    const dataUploads = path.join(process.cwd(), "data", "uploads");
-    if (!fs.existsSync(publicUploads)) {
-      fs.mkdirSync(publicUploads, { recursive: true });
-    }
-    if (!fs.existsSync(dataUploads)) {
-      fs.mkdirSync(dataUploads, { recursive: true });
-    }
+    try {
+      if (!fs.existsSync(publicUploads)) {
+        fs.mkdirSync(publicUploads, { recursive: true });
+      }
+    } catch {}
+    try {
+      if (!fs.existsSync(dataUploads)) {
+        fs.mkdirSync(dataUploads, { recursive: true });
+      }
+    } catch {}
 
     // Restore any persistent uploads from data/uploads into public/uploads
-    if (fs.existsSync(dataUploads)) {
-      const files = fs.readdirSync(dataUploads);
-      for (const file of files) {
-        const src = path.join(dataUploads, file);
-        const dst = path.join(publicUploads, file);
-        if (!fs.existsSync(dst) && fs.statSync(src).isFile()) {
-          fs.copyFileSync(src, dst);
+    if (fs.existsSync(dataUploads) && fs.existsSync(publicUploads)) {
+      try {
+        const files = fs.readdirSync(dataUploads);
+        for (const file of files) {
+          const src = path.join(dataUploads, file);
+          const dst = path.join(publicUploads, file);
+          if (!fs.existsSync(dst) && fs.statSync(src).isFile()) {
+            fs.copyFileSync(src, dst);
+          }
         }
-      }
+      } catch {}
     }
   } catch (err) {
     console.warn("[server-db] Initialization fallback to in-memory store:", err);
@@ -137,18 +191,26 @@ async function persistDb() {
   if (typeof window !== "undefined") return;
 
   try {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const dataDir = path.join(process.cwd(), "data");
-    const dbPath = path.join(dataDir, "portfolio-db.json");
+    const { fs } = await getNodeModules();
+    const { baseDir, dbPath } = await getDataPaths();
 
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    if (!fs.existsSync(baseDir)) {
+      try {
+        fs.mkdirSync(baseDir, { recursive: true });
+      } catch (err) {
+        console.warn("[server-db] Base directory create warning on persist:", err);
+      }
     }
 
     const tmpPath = `${dbPath}.tmp-${Date.now()}`;
     fs.writeFileSync(tmpPath, JSON.stringify(memoryDb, null, 2), "utf8");
-    fs.renameSync(tmpPath, dbPath);
+    try {
+      fs.renameSync(tmpPath, dbPath);
+    } catch {
+      // If rename fails across partitions/tmp mounts, fallback to copy + delete
+      fs.copyFileSync(tmpPath, dbPath);
+      try { fs.unlinkSync(tmpPath); } catch {}
+    }
   } catch (err) {
     console.warn("[server-db] Disk write fallback:", err);
   }
@@ -723,6 +785,50 @@ const VALID_ADMIN_PASSWORDS = [
   "akshay-admin-2026",
 ];
 
+const ADMIN_SECRET =
+  process.env["ADMIN_SECRET"] ||
+  process.env["ADMIN_PASSWORD"] ||
+  "akshay-portfolio-secret-admin-key-2026-auth";
+
+async function createSignedAdminToken(username: string): Promise<string> {
+  const { crypto } = await getNodeModules();
+  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+  const payload = JSON.stringify({ u: username, exp: expiresAt });
+  const data = Buffer.from(payload).toString("base64url");
+  const sig = crypto.createHmac("sha256", ADMIN_SECRET).update(data).digest("base64url");
+  return `adm_${data}.${sig}`;
+}
+
+async function verifySignedAdminToken(token: string): Promise<{ valid: boolean; username?: string; expiresAt?: number }> {
+  if (!token || typeof token !== "string" || !token.startsWith("adm_")) {
+    return { valid: false };
+  }
+  const rest = token.slice(4);
+  const dotIndex = rest.indexOf(".");
+  if (dotIndex === -1) {
+    return { valid: false };
+  }
+  const data = rest.slice(0, dotIndex);
+  const sig = rest.slice(dotIndex + 1);
+
+  try {
+    const { crypto } = await getNodeModules();
+    const expectedSig = crypto.createHmac("sha256", ADMIN_SECRET).update(data).digest("base64url");
+    if (sig.length !== expectedSig.length) return { valid: false };
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expectedSig);
+    if (!crypto.timingSafeEqual(a, b)) return { valid: false };
+
+    const payload = JSON.parse(Buffer.from(data, "base64url").toString("utf8"));
+    if (typeof payload.exp === "number" && payload.exp > Date.now()) {
+      return { valid: true, username: payload.u || "admin", expiresAt: payload.exp };
+    }
+  } catch {
+    return { valid: false };
+  }
+  return { valid: false };
+}
+
 export async function authenticateAdmin(
   username: string,
   pass: string,
@@ -745,7 +851,7 @@ export async function authenticateAdmin(
     inputPass === DEFAULT_ADMIN_PASS;
 
   if (isUserValid && isPassValid) {
-    const token = `adm_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    const token = await createSignedAdminToken(inputUser);
     // Token valid for 7 days
     memoryDb.adminTokens[token] = {
       username: inputUser,
@@ -765,14 +871,28 @@ export async function authenticateAdmin(
 export async function verifyAdminToken(token: string | null | undefined): Promise<boolean> {
   if (!token) return false;
   await initDb();
+  // 1. In-memory fast path
   const entry = memoryDb.adminTokens[token];
-  if (!entry) return false;
-  if (entry.expiresAt < Date.now()) {
-    delete memoryDb.adminTokens[token];
-    await persistDb();
-    return false;
+  if (entry) {
+    if (entry.expiresAt < Date.now()) {
+      delete memoryDb.adminTokens[token];
+      await persistDb();
+      return false;
+    }
+    return true;
   }
-  return true;
+
+  // 2. Stateless HMAC verification (survives Vercel serverless container restarts and lambda scale-out)
+  const verified = await verifySignedAdminToken(token);
+  if (verified.valid && verified.expiresAt) {
+    memoryDb.adminTokens[token] = {
+      username: verified.username || "admin",
+      expiresAt: verified.expiresAt,
+    };
+    return true;
+  }
+
+  return false;
 }
 
 export async function revokeAdminToken(token: string): Promise<void> {
@@ -875,30 +995,30 @@ export async function saveUploadedImage(data: {
   }
 
   const ext = magicValidation.ext;
-  const fs = await import("node:fs");
-  const path = await import("node:path");
-  const crypto = await import("node:crypto");
+  const { fs, path, crypto } = await getNodeModules();
+  const { dataUploads, publicUploads } = await getDataPaths();
 
   const randomHash = crypto.randomBytes(4).toString("hex");
   const timestamp = Date.now();
   const safeFilename = `proj-${timestamp}-${randomHash}.${ext}`;
 
-  // Primary public serving directory & persistent data backup directory
-  const publicDir = path.join(process.cwd(), "public", "uploads");
-  const dataDir = path.join(process.cwd(), "data", "uploads");
-
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-  }
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    if (!fs.existsSync(dataUploads)) {
+      fs.mkdirSync(dataUploads, { recursive: true });
+    }
+    fs.writeFileSync(path.join(dataUploads, safeFilename), buffer);
+  } catch (err) {
+    console.warn("[server-db] Data uploads write warning:", err);
   }
 
-  const publicPath = path.join(publicDir, safeFilename);
-  const dataPath = path.join(dataDir, safeFilename);
-
-  fs.writeFileSync(publicPath, buffer);
-  fs.writeFileSync(dataPath, buffer);
+  try {
+    if (!fs.existsSync(publicUploads)) {
+      fs.mkdirSync(publicUploads, { recursive: true });
+    }
+    fs.writeFileSync(path.join(publicUploads, safeFilename), buffer);
+  } catch {
+    // Expected on read-only publicDir
+  }
 
   // If .output/public exists (Nitro/build output), also write there for immediate serving
   try {
@@ -939,8 +1059,8 @@ export async function deleteUploadedFileIfOrphaned(relativeUrl: string): Promise
   }
 
   try {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
+    const { fs, path } = await getNodeModules();
+    const { dataUploads, publicUploads } = await getDataPaths();
     const filename = path.basename(relativeUrl);
 
     // Sanitize to prevent path traversal
@@ -948,13 +1068,13 @@ export async function deleteUploadedFileIfOrphaned(relativeUrl: string): Promise
       return false;
     }
 
-    const publicPath = path.join(process.cwd(), "public", "uploads", filename);
-    const dataPath = path.join(process.cwd(), "data", "uploads", filename);
+    const publicPath = path.join(publicUploads, filename);
+    const dataPath = path.join(dataUploads, filename);
     const outputPath = path.join(process.cwd(), ".output", "public", "uploads", filename);
 
-    if (fs.existsSync(publicPath)) fs.unlinkSync(publicPath);
-    if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
-    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    if (fs.existsSync(publicPath)) { try { fs.unlinkSync(publicPath); } catch {} }
+    if (fs.existsSync(dataPath)) { try { fs.unlinkSync(dataPath); } catch {} }
+    if (fs.existsSync(outputPath)) { try { fs.unlinkSync(outputPath); } catch {} }
     return true;
   } catch (err) {
     console.warn("[server-db] Failed to clean up orphaned upload file:", err);

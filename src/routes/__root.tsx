@@ -130,6 +130,43 @@ function RootShell({ children }: { children: ReactNode }) {
           preload="auto"
           style={{ display: "none" }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function(){
+  try {
+    if (localStorage.getItem("akm-sound") === "off") return;
+    var a = document.getElementById("akm-bg-audio");
+    if (!a) return;
+    a.volume = 0.75;
+    var p = a.play();
+    if (p && p.catch) {
+      p.catch(function() {
+        var start = function() {
+          if (localStorage.getItem("akm-sound") === "off") return;
+          a.volume = 0.75;
+          a.muted = false;
+          var p2 = a.play();
+          if (p2 && p2.then) {
+            p2.then(function() {
+              ["pointerdown","pointerup","touchstart","touchend","touchmove","mousedown","click","keydown","wheel","scroll"].forEach(function(e){
+                window.removeEventListener(e, start);
+                document.removeEventListener(e, start);
+              });
+            }).catch(function(){});
+          }
+        };
+        ["pointerdown","pointerup","touchstart","touchend","touchmove","mousedown","click","keydown","wheel","scroll"].forEach(function(e){
+          window.addEventListener(e, start, { passive: true });
+          document.addEventListener(e, start, { passive: true });
+        });
+      });
+    }
+  } catch(e) {}
+})();
+`,
+          }}
+        />
         {children}
         <Scripts />
       </body>

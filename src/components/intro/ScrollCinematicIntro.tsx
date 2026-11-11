@@ -39,12 +39,29 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
         void sound.turnOn();
       }
     };
-    const events = ["pointerdown", "mousedown", "touchstart", "touchend", "click", "keydown", "wheel", "scroll"];
-    events.forEach((e) => window.addEventListener(e, triggerAudio, { once: true, passive: true }));
+    const events = [
+      "pointerdown",
+      "pointerup",
+      "touchstart",
+      "touchend",
+      "touchmove",
+      "mousedown",
+      "click",
+      "keydown",
+      "wheel",
+      "scroll",
+    ];
+    events.forEach((e) => {
+      window.addEventListener(e, triggerAudio, { passive: true });
+      document.addEventListener(e, triggerAudio, { passive: true });
+    });
 
     return () => {
       unsub();
-      events.forEach((e) => window.removeEventListener(e, triggerAudio));
+      events.forEach((e) => {
+        window.removeEventListener(e, triggerAudio);
+        document.removeEventListener(e, triggerAudio);
+      });
     };
   }, []);
 
@@ -58,7 +75,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
-    if (!sound.isPlaying) {
+    if (sound.enabled && !sound.isPlaying && typeof sound.turnOn === "function") {
       void sound.turnOn();
     }
     const container = containerRef.current;

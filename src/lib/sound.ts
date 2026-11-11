@@ -28,12 +28,12 @@ class SoundEngine {
   private listeners = new Set<Listener>();
   private unlockCleanup: (() => void) | null = null;
   private _enabled = true;
-  private _isPlaying = true;
+  private _isPlaying = false;
   private currentSourceIndex = 0;
 
   constructor() {
     this._enabled = this.getStoredPreference();
-    this._isPlaying = this._enabled;
+    this._isPlaying = false;
   }
 
   get enabled(): boolean {
@@ -91,6 +91,10 @@ class SoundEngine {
       audio.loop = true;
       audio.volume = TARGET_VOLUME;
 
+      if (!audio.paused && audio.volume > 0) {
+        this._isPlaying = true;
+      }
+
       // Keep state synchronized with native media events
       audio.addEventListener("play", () => {
         this._isPlaying = true;
@@ -98,7 +102,7 @@ class SoundEngine {
       });
 
       audio.addEventListener("pause", () => {
-        if (audio.paused && audio.volume === 0) {
+        if (!this._enabled) {
           this._isPlaying = false;
           this.emit();
         }
@@ -149,38 +153,50 @@ class SoundEngine {
       if (playPromise !== undefined && typeof playPromise.then === "function") {
         playPromise
           .then(() => {
-            this.cleanupUnlockListeners();
             this._isPlaying = true;
+            this.cleanupUnlockListeners();
             this.emit();
           })
           .catch(() => {
-            // Keep listening until permission granted
+            // Keep listening until a valid user gesture triggers
           });
       } else {
-        this.cleanupUnlockListeners();
         this._isPlaying = true;
+        this.cleanupUnlockListeners();
         this.emit();
       }
     };
 
-    // Listen on any possible user entry action: click, tap, key, or scroll
+    // Listen on every possible user entry and navigation action without { once: true }
+    // to ensure non-activation events (like wheel) do not discard the listener
     const events = [
       "pointerdown",
-      "mousedown",
+      "pointerup",
       "touchstart",
       "touchend",
+      "touchmove",
+      "mousedown",
+      "mouseup",
       "click",
       "keydown",
+      "keyup",
       "wheel",
       "scroll",
+      "focus",
+      "visibilitychange",
     ];
 
-    const cleanup = () => {
-      events.forEach((e) => window.removeEventListener(e, unlock));
-    };
+    events.forEach((e) => {
+      window.addEventListener(e, unlock, { passive: true });
+      document.addEventListener(e, unlock, { passive: true });
+    });
 
-    this.unlockCleanup = cleanup;
-    events.forEach((e) => window.addEventListener(e, unlock, { once: true, passive: true }));
+    this.unlockCleanup = () => {
+      events.forEach((e) => {
+        window.removeEventListener(e, unlock);
+        document.removeEventListener(e, unlock);
+      });
+    };
   }
 
   async autoStart() {
@@ -190,7 +206,7 @@ class SoundEngine {
     const audio = this.ensureAudio();
     if (!audio) return;
 
-    // Direct playback attempt with target volume
+    // Direct playback attempt with target volume immediately on load
     audio.volume = TARGET_VOLUME;
     audio.muted = false;
     try {
@@ -202,10 +218,9 @@ class SoundEngine {
         return;
       }
     } catch {
-      // Browser blocked direct audible autoplay without user interaction:
-      // Prime audio pipeline with muted playback so it unpauses instantly upon first touch/scroll
-      audio.muted = true;
-      audio.play().catch(() => {});
+      // Browser blocked direct unmuted autoplay without user interaction:
+      // Prime audio and arm unlock listeners to start playback on the very first touch/scroll/key
+      this._isPlaying = false;
     }
 
     this.registerUnlockListeners();
@@ -250,7 +265,7 @@ class SoundEngine {
         }
         this._isPlaying = true;
       } catch {
-        this._isPlaying = true;
+        this._isPlaying = false;
         this.registerUnlockListeners();
       }
     } else {

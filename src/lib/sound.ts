@@ -29,11 +29,20 @@ class SoundEngine {
   private unlockCleanup: (() => void) | null = null;
   private _enabled = true;
   private _isPlaying = false;
+  private isUnlocking = false;
   private currentSourceIndex = 0;
 
   constructor() {
     this._enabled = this.getStoredPreference();
     this._isPlaying = false;
+    if (typeof window !== "undefined") {
+      if (document.readyState === "complete" || document.readyState === "interactive") {
+        void this.autoStart();
+      } else {
+        window.addEventListener("DOMContentLoaded", () => void this.autoStart(), { once: true });
+        window.addEventListener("load", () => void this.autoStart(), { once: true });
+      }
+    }
   }
 
   get enabled(): boolean {
@@ -139,62 +148,47 @@ class SoundEngine {
     this.cleanupUnlockListeners();
     if (!this._enabled) return;
 
-    const unlock = () => {
+    const unlockHandler = async () => {
       if (!this._enabled) {
         this.cleanupUnlockListeners();
         return;
       }
-      const a = this.ensureAudio();
-      if (!a) return;
+      if (this.isUnlocking) return;
+      this.isUnlocking = true;
 
-      a.volume = TARGET_VOLUME;
-      a.muted = false;
-      const playPromise = a.play();
-      if (playPromise !== undefined && typeof playPromise.then === "function") {
-        playPromise
-          .then(() => {
-            this._isPlaying = true;
-            this.cleanupUnlockListeners();
-            this.emit();
-          })
-          .catch(() => {
-            // Keep listening until a valid user gesture triggers
-          });
-      } else {
+      const audio = this.ensureAudio();
+      if (!audio) {
+        this.isUnlocking = false;
+        return;
+      }
+
+      audio.volume = TARGET_VOLUME;
+      audio.muted = false;
+
+      try {
+        await audio.play();
         this._isPlaying = true;
         this.cleanupUnlockListeners();
         this.emit();
+      } catch {
+        // Keep listening until a valid user gesture triggers
+      } finally {
+        this.isUnlocking = false;
       }
     };
 
-    // Listen on every possible user entry and navigation action without { once: true }
-    // to ensure non-activation events (like wheel) do not discard the listener
-    const events = [
-      "pointerdown",
-      "pointerup",
-      "touchstart",
-      "touchend",
-      "touchmove",
-      "mousedown",
-      "mouseup",
-      "click",
-      "keydown",
-      "keyup",
-      "wheel",
-      "scroll",
-      "focus",
-      "visibilitychange",
-    ];
+    // User gesture events according to W3C specification: click, pointerdown, touchstart, keydown
+    const events = ["click", "pointerdown", "touchstart", "keydown"];
 
     events.forEach((e) => {
-      window.addEventListener(e, unlock, { passive: true });
-      document.addEventListener(e, unlock, { passive: true });
+      window.addEventListener(e, unlockHandler, { capture: true, passive: true });
+      document.addEventListener(e, unlockHandler, { capture: true, passive: true });
     });
 
     this.unlockCleanup = () => {
       events.forEach((e) => {
-        window.removeEventListener(e, unlock);
-        document.removeEventListener(e, unlock);
+        window.removeEventListener(e, unlockHandler, { capture: true });
+        document.removeEventListener(e, unlockHandler, { capture: true });
       });
     };
   }
@@ -210,16 +204,14 @@ class SoundEngine {
     audio.volume = TARGET_VOLUME;
     audio.muted = false;
     try {
-      const p = audio.play();
-      if (p !== undefined && typeof p.then === "function") {
-        await p;
-        this._isPlaying = true;
-        this.emit();
-        return;
-      }
+      await audio.play();
+      this._isPlaying = true;
+      this.cleanupUnlockListeners();
+      this.emit();
+      return;
     } catch {
       // Browser blocked direct unmuted autoplay without user interaction:
-      // Prime audio and arm unlock listeners to start playback on the very first touch/scroll/key
+      // Arm capture unlock listeners to start playback on the visitor's very first interaction anywhere
       this._isPlaying = false;
     }
 
@@ -260,10 +252,7 @@ class SoundEngine {
       audio.muted = false;
       if (audio.paused) {
         try {
-          const p = audio.play();
-          if (p !== undefined && typeof p.then === "function") {
-            await p;
-          }
+          await audio.play();
           this._isPlaying = true;
         } catch {
           this._isPlaying = false;

@@ -33,53 +33,18 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   useEffect(() => {
     const unsub = typeof sound.subscribe === "function" ? sound.subscribe(setIsAudioPlaying) : () => {};
     setIsAudioPlaying(Boolean(sound.enabled));
-
-    const triggerAudio = () => {
-      if (sound.enabled && !sound.isPlaying && typeof sound.turnOn === "function") {
-        void sound.turnOn();
-      }
-    };
-    const events = [
-      "pointerdown",
-      "pointerup",
-      "touchstart",
-      "touchend",
-      "touchmove",
-      "mousedown",
-      "click",
-      "keydown",
-      "wheel",
-      "scroll",
-    ];
-    events.forEach((e) => {
-      window.addEventListener(e, triggerAudio, { passive: true });
-      document.addEventListener(e, triggerAudio, { passive: true });
-    });
-
-    return () => {
-      unsub();
-      events.forEach((e) => {
-        window.removeEventListener(e, triggerAudio);
-        document.removeEventListener(e, triggerAudio);
-      });
-    };
+    return unsub;
   }, []);
 
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
     sound.play?.("click");
-    if (sound.enabled && !sound.isPlaying && typeof sound.turnOn === "function") {
-      void sound.turnOn();
-    }
     onEnterPortfolio?.();
     scrollToSection("home");
   }, [onEnterPortfolio]);
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
-    if (sound.enabled && !sound.isPlaying && typeof sound.turnOn === "function") {
-      void sound.turnOn();
-    }
     const container = containerRef.current;
     if (!container) return;
 

@@ -28,13 +28,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isNearEnd, setIsNearEnd] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(() => Boolean(sound.enabled));
-
-  useEffect(() => {
-    const unsub = typeof sound.subscribe === "function" ? sound.subscribe(setIsAudioPlaying) : () => {};
-    setIsAudioPlaying(Boolean(sound.enabled));
-    return unsub;
-  }, []);
 
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
@@ -319,18 +312,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
             <Logo className="text-xl sm:text-[1.85rem] drop-shadow-[0_0_15px_rgba(192,132,252,0.85)] filter brightness-110" />
           </button>
 
-          {/* Top-Right: Sound Control & Skip Intro */}
+          {/* Top-Right: Skip Intro */}
           <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto">
-            <button
-              onClick={() => {
-                if (typeof sound.toggle === "function") void sound.toggle();
-              }}
-              aria-label={isAudioPlaying ? "Mute audio" : "Unmute audio"}
-              className="group inline-flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] backdrop-blur-md transition-all duration-300 active:scale-95"
-            >
-              <span className="tracking-wide">{isAudioPlaying ? "Sound On ♫" : "Sound Off 🔇"}</span>
-            </button>
-
             <button
               onClick={handleEnterPortfolio}
               aria-label="Skip Intro"

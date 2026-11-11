@@ -1,10 +1,10 @@
 /**
  * Background Audio Controller for Akshay Kumar Modi's Portfolio.
- * Plays the exact peaceful piano soundscape continuously in a seamless loop.
+ * Plays the peaceful piano soundscape continuously in a seamless loop.
  *
  * Rules:
- * - Plays automatically when any visitor enters the website via link.
- * - Handles browser autoplay restrictions by initiating playback and unlocking sound on first user touch/gesture.
+ * - Plays automatically by default when any visitor enters the website.
+ * - Leverages in-DOM <audio autoPlay> and reactive gesture unlocking for maximum browser compatibility.
  * - Single source of truth for ON/OFF state and user preference.
  * - Resilient multi-tier audio source fallbacks for reliable CDN/Vercel static asset delivery.
  * - Preserves playback position on pause so toggling ON resumes smoothly.
@@ -28,7 +28,6 @@ class SoundEngine {
   private listeners = new Set<Listener>();
   private unlockCleanup: (() => void) | null = null;
   private _isPlaying = false;
-  private fadeRaf = 0;
   private currentSourceIndex = 0;
 
   get enabled(): boolean {
@@ -66,18 +65,30 @@ class SoundEngine {
     if (typeof window === "undefined") return null;
 
     try {
-      const audio = new Audio();
+      // 1. First look for existing in-DOM audio element rendered by RootShell
+      let audio = document.getElementById("akm-bg-audio") as HTMLAudioElement | null;
+      if (!audio) {
+        audio = new Audio();
+        audio.id = "akm-bg-audio";
+        audio.src = AUDIO_SOURCES[this.currentSourceIndex] ?? AUDIO_SOURCES[0] ?? "";
+        audio.preload = "auto";
+        audio.loop = true;
+        audio.autoplay = true;
+        try {
+          document.body.appendChild(audio);
+        } catch {
+          /* ignore */
+        }
+      }
+
       audio.preload = "auto";
       audio.loop = true;
-      audio.volume = 0;
-      audio.src = AUDIO_SOURCES[this.currentSourceIndex] ?? AUDIO_SOURCES[0] ?? "";
+      audio.volume = TARGET_VOLUME;
 
       // Keep state synchronized with native media events
       audio.addEventListener("play", () => {
-        if (!audio.muted) {
-          this._isPlaying = true;
-          this.emit();
-        }
+        this._isPlaying = true;
+        this.emit();
       });
 
       audio.addEventListener("pause", () => {
@@ -93,11 +104,9 @@ class SoundEngine {
           this.currentSourceIndex += 1;
           const nextSrc = AUDIO_SOURCES[this.currentSourceIndex];
           if (nextSrc) {
-            audio.src = nextSrc;
-            audio.load();
-            if (this._isPlaying) {
-              audio.play().catch(() => {});
-            }
+            audio!.src = nextSrc;
+            audio!.load();
+            audio!.play().catch(() => {});
           }
         }
       });
@@ -123,29 +132,24 @@ class SoundEngine {
       const a = this.ensureAudio();
       if (!a) return;
 
+      a.volume = TARGET_VOLUME;
       a.muted = false;
-      if (a.paused) {
-        a.volume = 0;
-        const playPromise = a.play();
-        if (playPromise !== undefined && typeof playPromise.then === "function") {
-          playPromise
-            .then(() => {
-              this.cleanupUnlockListeners();
-              this.fadeTo(TARGET_VOLUME, 1000);
-              this._isPlaying = true;
-              this.emit();
-            })
-            .catch(() => {
-              // Wait for next interaction
-            });
-          return;
-        }
+      const playPromise = a.play();
+      if (playPromise !== undefined && typeof playPromise.then === "function") {
+        playPromise
+          .then(() => {
+            this.cleanupUnlockListeners();
+            this._isPlaying = true;
+            this.emit();
+          })
+          .catch(() => {
+            // Keep listening until permission granted
+          });
+      } else {
+        this.cleanupUnlockListeners();
+        this._isPlaying = true;
+        this.emit();
       }
-
-      this.cleanupUnlockListeners();
-      this.fadeTo(TARGET_VOLUME, 1000);
-      this._isPlaying = true;
-      this.emit();
     };
 
     // Listen on any possible user entry action: click, tap, key, or scroll
@@ -168,100 +172,28 @@ class SoundEngine {
     events.forEach((e) => window.addEventListener(e, unlock, { once: true, passive: true }));
   }
 
-  private fadeTo(targetVolume: number, durationMs = 800) {
-    if (typeof window === "undefined") return;
-    if (this.fadeRaf) {
-      cancelAnimationFrame(this.fadeRaf);
-      this.fadeRaf = 0;
-    }
-
-    const audio = this.audio;
-    if (!audio) return;
-
-    if (durationMs <= 0) {
-      audio.volume = targetVolume;
-      if (targetVolume === 0) {
-        try {
-          audio.pause();
-        } catch {
-          /* ignore */
-        }
-      }
-      return;
-    }
-
-    const startVolume = audio.volume;
-    const startTime = performance.now();
-
-    const step = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / durationMs);
-      const ease =
-        progress < 0.5
-          ? 2 * progress * progress
-          : -1 + (4 - 2 * progress) * progress;
-      const vol = startVolume + (targetVolume - startVolume) * ease;
-
-      if (this.audio) {
-        this.audio.volume = Math.max(0, Math.min(1, vol));
-      }
-
-      if (progress < 1) {
-        this.fadeRaf = requestAnimationFrame(step);
-      } else {
-        this.fadeRaf = 0;
-        if (targetVolume === 0 && this.audio) {
-          try {
-            this.audio.pause();
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-    };
-
-    this.fadeRaf = requestAnimationFrame(step);
-  }
-
   async autoStart() {
     if (typeof window === "undefined") return;
 
     const audio = this.ensureAudio();
     if (!audio) return;
 
-    // If audio is already playing audibly, maintain active state
-    if (!audio.paused && !audio.muted && this._isPlaying) {
-      return;
-    }
-
-    // 1. Attempt direct audible autoplay (works when browser policy permits)
+    // Direct playback attempt with target volume
+    audio.volume = TARGET_VOLUME;
+    audio.muted = false;
     try {
-      audio.muted = false;
-      audio.volume = 0;
       const p = audio.play();
       if (p !== undefined && typeof p.then === "function") {
         await p;
-        this.fadeTo(TARGET_VOLUME, 1200);
         this._isPlaying = true;
         this.emit();
         return;
       }
     } catch {
-      // 2. Browser blocked audible autoplay without user interaction.
-      // Immediately start muted stream so audio buffers and plays continuously,
-      // and automatically unmutes on the very first touch/scroll/click!
-      try {
-        audio.muted = true;
-        const mutedPromise = audio.play();
-        if (mutedPromise !== undefined && typeof mutedPromise.then === "function") {
-          await mutedPromise;
-        }
-      } catch {
-        /* ignore */
-      }
+      // Browser blocked direct audible autoplay without user interaction:
+      // Arm unlock listeners to start playback on the very first touch/scroll/click
     }
 
-    // Arm unlock listeners to unmute/play on the very first visitor action
     this.registerUnlockListeners();
   }
 
@@ -294,16 +226,13 @@ class SoundEngine {
 
     const audio = this.ensureAudio();
     if (audio) {
+      audio.volume = TARGET_VOLUME;
+      audio.muted = false;
       try {
-        audio.muted = false;
-        if (audio.paused) {
-          audio.volume = 0;
-          const p = audio.play();
-          if (p !== undefined && typeof p.then === "function") {
-            await p;
-          }
+        const p = audio.play();
+        if (p !== undefined && typeof p.then === "function") {
+          await p;
         }
-        this.fadeTo(TARGET_VOLUME, 600);
         this._isPlaying = true;
         this.emit();
       } catch {
@@ -328,11 +257,6 @@ class SoundEngine {
 
     this.cleanupUnlockListeners();
 
-    if (this.fadeRaf) {
-      cancelAnimationFrame(this.fadeRaf);
-      this.fadeRaf = 0;
-    }
-
     if (this.audio) {
       try {
         this.audio.pause();
@@ -340,7 +264,6 @@ class SoundEngine {
         /* ignore */
       }
       this.audio.volume = 0;
-      this.audio.muted = true;
     }
 
     this._isPlaying = false;

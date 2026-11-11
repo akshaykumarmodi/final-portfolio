@@ -121,6 +121,15 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <audio
+          id="akm-bg-audio"
+          src="/audio/peaceful-piano-ambient.mp3"
+          autoPlay
+          loop
+          playsInline
+          preload="auto"
+          style={{ display: "none" }}
+        />
         {children}
         <Scripts />
       </body>

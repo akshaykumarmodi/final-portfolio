@@ -27,11 +27,17 @@ class SoundEngine {
   private audio: HTMLAudioElement | null = null;
   private listeners = new Set<Listener>();
   private unlockCleanup: (() => void) | null = null;
-  private _isPlaying = false;
+  private _enabled = true;
+  private _isPlaying = true;
   private currentSourceIndex = 0;
 
+  constructor() {
+    this._enabled = this.getStoredPreference();
+    this._isPlaying = this._enabled;
+  }
+
   get enabled(): boolean {
-    return this._isPlaying;
+    return this._enabled;
   }
 
   get isPlaying(): boolean {
@@ -57,7 +63,7 @@ class SoundEngine {
   }
 
   private emit() {
-    this.listeners.forEach((l) => l(this._isPlaying));
+    this.listeners.forEach((l) => l(this._enabled));
   }
 
   private ensureAudio(): HTMLAudioElement | null {
@@ -127,8 +133,13 @@ class SoundEngine {
 
   private registerUnlockListeners() {
     this.cleanupUnlockListeners();
+    if (!this._enabled) return;
 
     const unlock = () => {
+      if (!this._enabled) {
+        this.cleanupUnlockListeners();
+        return;
+      }
       const a = this.ensureAudio();
       if (!a) return;
 
@@ -174,6 +185,7 @@ class SoundEngine {
 
   async autoStart() {
     if (typeof window === "undefined") return;
+    if (!this._enabled) return;
 
     const audio = this.ensureAudio();
     if (!audio) return;
@@ -191,7 +203,9 @@ class SoundEngine {
       }
     } catch {
       // Browser blocked direct audible autoplay without user interaction:
-      // Arm unlock listeners to start playback on the very first touch/scroll/click
+      // Prime audio pipeline with muted playback so it unpauses instantly upon first touch/scroll
+      audio.muted = true;
+      audio.play().catch(() => {});
     }
 
     this.registerUnlockListeners();
@@ -206,7 +220,7 @@ class SoundEngine {
   }
 
   async toggle() {
-    if (this._isPlaying) {
+    if (this._enabled) {
       await this.turnOff();
     } else {
       await this.turnOn();
@@ -214,6 +228,7 @@ class SoundEngine {
   }
 
   async turnOn() {
+    this._enabled = true;
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem(STORAGE_KEY, "on");
@@ -234,19 +249,19 @@ class SoundEngine {
           await p;
         }
         this._isPlaying = true;
-        this.emit();
       } catch {
-        this._isPlaying = false;
-        this.emit();
+        this._isPlaying = true;
         this.registerUnlockListeners();
       }
     } else {
       this._isPlaying = true;
-      this.emit();
     }
+    this.emit();
   }
 
   async turnOff() {
+    this._enabled = false;
+    this._isPlaying = false;
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem(STORAGE_KEY, "off");
@@ -266,7 +281,6 @@ class SoundEngine {
       this.audio.volume = 0;
     }
 
-    this._isPlaying = false;
     this.emit();
   }
 

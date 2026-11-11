@@ -28,14 +28,14 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isNearEnd, setIsNearEnd] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(() => Boolean(sound.isPlaying));
+  const [isAudioPlaying, setIsAudioPlaying] = useState(() => Boolean(sound.enabled));
 
   useEffect(() => {
     const unsub = typeof sound.subscribe === "function" ? sound.subscribe(setIsAudioPlaying) : () => {};
-    setIsAudioPlaying(Boolean(sound.isPlaying));
+    setIsAudioPlaying(Boolean(sound.enabled));
 
     const triggerAudio = () => {
-      if (!sound.isPlaying && typeof sound.turnOn === "function") {
+      if (sound.enabled && !sound.isPlaying && typeof sound.turnOn === "function") {
         void sound.turnOn();
       }
     };

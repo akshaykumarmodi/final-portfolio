@@ -32,15 +32,16 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
     sound.play?.("click");
-    if (!sound.isPlaying && sound.turnOn && (!sound.getStoredPreference || sound.getStoredPreference())) {
-      void sound.turnOn();
-    }
+    void sound.turnOn();
     onEnterPortfolio?.();
     scrollToSection("home");
   }, [onEnterPortfolio]);
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
+    if (!sound.isPlaying) {
+      void sound.turnOn();
+    }
     const container = containerRef.current;
     if (!container) return;
 
@@ -215,6 +216,12 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     <div
       id="intro"
       ref={containerRef}
+      onClick={() => {
+        if (!sound.isPlaying) void sound.turnOn();
+      }}
+      onPointerDown={() => {
+        if (!sound.isPlaying) void sound.turnOn();
+      }}
       className="relative w-full h-[350vh] bg-[#070510] noise-overlay"
       aria-label="Cinematic Interactive Intro"
     >

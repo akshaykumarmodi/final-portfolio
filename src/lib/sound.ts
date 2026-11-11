@@ -3,9 +3,9 @@
  * Plays the exact peaceful piano soundscape continuously in a seamless loop.
  *
  * Rules:
- * - Plays the exact uploaded track continuously in a seamless loop.
+ * - Plays automatically when any visitor enters the website via link.
+ * - Handles browser autoplay restrictions by initiating playback and unlocking sound on first user touch/gesture.
  * - Single source of truth for ON/OFF state and user preference.
- * - Respects modern browser autoplay restrictions and unlocks on first user interaction.
  * - Resilient multi-tier audio source fallbacks for reliable CDN/Vercel static asset delivery.
  * - Preserves playback position on pause so toggling ON resumes smoothly.
  */
@@ -74,8 +74,10 @@ class SoundEngine {
 
       // Keep state synchronized with native media events
       audio.addEventListener("play", () => {
-        this._isPlaying = true;
-        this.emit();
+        if (!audio.muted) {
+          this._isPlaying = true;
+          this.emit();
+        }
       });
 
       audio.addEventListener("pause", () => {
@@ -117,17 +119,11 @@ class SoundEngine {
   private registerUnlockListeners() {
     this.cleanupUnlockListeners();
 
-    if (!this.getStoredPreference()) return;
-
     const unlock = () => {
-      if (!this.getStoredPreference()) {
-        this.cleanupUnlockListeners();
-        return;
-      }
-
       const a = this.ensureAudio();
       if (!a) return;
 
+      a.muted = false;
       if (a.paused) {
         a.volume = 0;
         const playPromise = a.play();
@@ -140,23 +136,28 @@ class SoundEngine {
               this.emit();
             })
             .catch(() => {
-              // Wait for next permitted user gesture
+              // Wait for next interaction
             });
+          return;
         }
-      } else {
-        this.cleanupUnlockListeners();
-        this._isPlaying = true;
-        this.emit();
       }
+
+      this.cleanupUnlockListeners();
+      this.fadeTo(TARGET_VOLUME, 1000);
+      this._isPlaying = true;
+      this.emit();
     };
 
-    // Only genuine user activation gestures allowed by browser autoplay policy
+    // Listen on any possible user entry action: click, tap, key, or scroll
     const events = [
       "pointerdown",
+      "mousedown",
       "touchstart",
       "touchend",
       "click",
       "keydown",
+      "wheel",
+      "scroll",
     ];
 
     const cleanup = () => {
@@ -225,23 +226,17 @@ class SoundEngine {
   async autoStart() {
     if (typeof window === "undefined") return;
 
-    // Respect explicit OFF choice from prior visit
-    if (!this.getStoredPreference()) {
-      this._isPlaying = false;
-      this.emit();
-      return;
-    }
-
     const audio = this.ensureAudio();
     if (!audio) return;
 
-    // If audio is already playing, keep current playing state
-    if (!audio.paused && this._isPlaying) {
+    // If audio is already playing audibly, maintain active state
+    if (!audio.paused && !audio.muted && this._isPlaying) {
       return;
     }
 
-    // Attempt direct autoplay
+    // 1. Attempt direct audible autoplay (works when browser policy permits)
     try {
+      audio.muted = false;
       audio.volume = 0;
       const p = audio.play();
       if (p !== undefined && typeof p.then === "function") {
@@ -252,10 +247,21 @@ class SoundEngine {
         return;
       }
     } catch {
-      // Browser blocked audible autoplay without user interaction
+      // 2. Browser blocked audible autoplay without user interaction.
+      // Immediately start muted stream so audio buffers and plays continuously,
+      // and automatically unmutes on the very first touch/scroll/click!
+      try {
+        audio.muted = true;
+        const mutedPromise = audio.play();
+        if (mutedPromise !== undefined && typeof mutedPromise.then === "function") {
+          await mutedPromise;
+        }
+      } catch {
+        /* ignore */
+      }
     }
 
-    // Register unlock listeners for the first permitted user gesture
+    // Arm unlock listeners to unmute/play on the very first visitor action
     this.registerUnlockListeners();
   }
 
@@ -289,6 +295,7 @@ class SoundEngine {
     const audio = this.ensureAudio();
     if (audio) {
       try {
+        audio.muted = false;
         if (audio.paused) {
           audio.volume = 0;
           const p = audio.play();
@@ -333,6 +340,7 @@ class SoundEngine {
         /* ignore */
       }
       this.audio.volume = 0;
+      this.audio.muted = true;
     }
 
     this._isPlaying = false;

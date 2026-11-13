@@ -147,13 +147,6 @@ function RootShell({ children }: { children: ReactNode }) {
                     if (localStorage.getItem('akm-sound') === 'off') {
                       localStorage.removeItem('akm-sound');
                     }
-                    var jRaw = localStorage.getItem('akm_portfolio_journey');
-                    if (jRaw && localStorage.getItem('akm_journey_customized') !== 'true') {
-                      var jParsed = JSON.parse(jRaw);
-                      if (Array.isArray(jParsed) && jParsed.length < 7) {
-                        localStorage.removeItem('akm_portfolio_journey');
-                      }
-                    }
                   } catch(e){}
 
                   var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 

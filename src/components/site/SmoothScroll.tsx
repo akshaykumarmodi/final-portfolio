@@ -36,14 +36,13 @@ export function SmoothScroll() {
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            duration: 0.9,
-            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            lerp: 0.11,
+            smoothWheel: true,
+            wheelMultiplier: 1.25,
+            touchMultiplier: 1.75,
+            infinite: false,
             orientation: "vertical",
             gestureOrientation: "vertical",
-            smoothWheel: true,
-            wheelMultiplier: 1.15,
-            touchMultiplier: 1.5,
-            infinite: false,
           });
 
           lenisRef.current = instance;

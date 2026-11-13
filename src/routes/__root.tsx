@@ -129,10 +129,11 @@ function RootShell({ children }: { children: ReactNode }) {
           playsInline
           preload="auto"
           aria-hidden="true"
-          style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
+          className="sr-only"
         >
           <source src="/audio/peaceful-piano-ambient.mp3" type="audio/mpeg" />
           <source src="/audio/peaceful-piano.mp3" type="audio/mpeg" />
+          <source src="/audio/cinematic-ambient.mp3" type="audio/mpeg" />
         </audio>
         <script
           dangerouslySetInnerHTML={{
@@ -152,55 +153,88 @@ function RootShell({ children }: { children: ReactNode }) {
                     (navigator.maxTouchPoints > 0 && /Mobile|Tablet/i.test(navigator.userAgent));
 
                   // =========================================================================
-                  // 1. DESKTOP / LAPTOP (100% RESTORED TO ORIGINAL WORKING 199e46d BEHAVIOR)
+                  // 1. DESKTOP / LAPTOP: AUTOMATIC BACKGROUND SOUND ON WEBSITE LOAD
                   // =========================================================================
                   if (!isMobile) {
+                    var isPlayingDesktop = false;
                     a.volume = 0.75;
                     a.muted = false;
 
-                    function tryPlayDesktop() {
-                      if (!a) return;
+                    function startDesktop() {
+                      if (!a || isPlayingDesktop) return;
+                      try {
+                        var AC = window.AudioContext || window.webkitAudioContext;
+                        if (AC) {
+                          var actx = window.__akm_actx = window.__akm_actx || new AC();
+                          if (actx.state === 'suspended') {
+                            actx.resume().catch(function() {});
+                          }
+                        }
+                      } catch(e){}
+
                       a.muted = false;
                       a.volume = 0.75;
-                      if (a.paused && typeof a.play === 'function') {
-                        a.play().catch(function() {});
+
+                      var p = a.play();
+                      if (p !== undefined && typeof p.then === 'function') {
+                        p.then(function() {
+                          isPlayingDesktop = true;
+                          cleanupDesktop();
+                        }).catch(function() {
+                          // Waiting for natural visitor movement
+                        });
+                      } else if (!a.paused) {
+                        isPlayingDesktop = true;
+                        cleanupDesktop();
                       }
                     }
 
                     // Direct unmuted autoplay on initial website entry
-                    var p = a.play();
-                    if (p !== undefined) {
-                      p.catch(function() {
-                        var events = [
-                          'pointerdown',
-                          'pointerup',
-                          'pointermove',
-                          'touchstart',
-                          'touchend',
-                          'touchmove',
-                          'mousedown',
-                          'mouseup',
-                          'mousemove',
-                          'click',
-                          'keydown',
-                          'wheel',
-                          'scroll',
-                          'mouseenter',
-                          'focus'
-                        ];
-                        function onAnyDesktopInteraction() {
-                          events.forEach(function(ev) {
-                            window.removeEventListener(ev, onAnyDesktopInteraction, true);
-                            document.removeEventListener(ev, onAnyDesktopInteraction, true);
-                          });
-                          tryPlayDesktop();
-                        }
-                        events.forEach(function(ev) {
-                          window.addEventListener(ev, onAnyDesktopInteraction, { capture: true, once: true, passive: true });
-                          document.addEventListener(ev, onAnyDesktopInteraction, { capture: true, once: true, passive: true });
-                        });
+                    startDesktop();
+
+                    // Lifecycle triggers across desktop browsers (starts sound as soon as document/media loads)
+                    a.addEventListener('canplay', startDesktop, { once: true });
+                    window.addEventListener('DOMContentLoaded', startDesktop, { once: true });
+                    window.addEventListener('load', startDesktop, { once: true });
+                    window.addEventListener('pageshow', startDesktop, { once: true });
+
+                    // Natural desktop visitor movement triggers (no click required!)
+                    var desktopEvents = [
+                      'pointermove',
+                      'mousemove',
+                      'wheel',
+                      'scroll',
+                      'mouseenter',
+                      'focus',
+                      'pointerdown',
+                      'pointerup',
+                      'mousedown',
+                      'mouseup',
+                      'keydown',
+                      'click'
+                    ];
+
+                    function onDesktopMovement() {
+                      startDesktop();
+                    }
+
+                    function cleanupDesktop() {
+                      desktopEvents.forEach(function(ev) {
+                        window.removeEventListener(ev, onDesktopMovement, true);
+                        document.removeEventListener(ev, onDesktopMovement, true);
                       });
                     }
+
+                    desktopEvents.forEach(function(ev) {
+                      window.addEventListener(ev, onDesktopMovement, { capture: true, passive: true });
+                      document.addEventListener(ev, onDesktopMovement, { capture: true, passive: true });
+                    });
+
+                    a.addEventListener('playing', function() {
+                      isPlayingDesktop = true;
+                      cleanupDesktop();
+                    }, { once: true });
+
                     return;
                   }
 

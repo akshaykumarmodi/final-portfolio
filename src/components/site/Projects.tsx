@@ -299,7 +299,6 @@ function ProjectCard({
             type="button"
             onMouseEnter={() => play("hover")}
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
               play("click");
               onViewDetails(project);
@@ -318,10 +317,8 @@ function ProjectCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
-                  e.preventDefault();
                   e.stopPropagation();
                   play("click");
-                  window.open(project.liveUrl, "_blank", "noopener,noreferrer");
                 }}
                 onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="Open live demo"
@@ -337,10 +334,8 @@ function ProjectCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
-                  e.preventDefault();
                   e.stopPropagation();
                   play("click");
-                  window.open(project.githubUrl, "_blank", "noopener,noreferrer");
                 }}
                 onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="View source on GitHub"

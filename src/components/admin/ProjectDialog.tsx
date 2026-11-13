@@ -29,7 +29,7 @@ const DEFAULT_CATEGORIES = [
 
 interface ProjectDialogProps {
   open: boolean;
-  project?: Project | null;
+  project?: Project | null | undefined;
   onClose: () => void;
   onSave: (data: Partial<Project>) => Promise<void>;
 }

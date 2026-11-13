@@ -35,11 +35,10 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
     };
   }, [project, handleClose]);
 
-  if (!project) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 md:p-8">
+      {project && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 md:p-8">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -172,7 +171,11 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
                   size="lg"
                   onClick={() => {
                     play("click");
-                    window.open(project.liveUrl, "_blank", "noopener,noreferrer");
+                    try {
+                      window.open(project.liveUrl, "_blank", "noopener,noreferrer");
+                    } catch {
+                      window.location.href = project.liveUrl;
+                    }
                   }}
                   className="gap-2 text-sm sm:text-base"
                 >
@@ -187,7 +190,11 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
                   size="lg"
                   onClick={() => {
                     play("click");
-                    window.open(project.githubUrl, "_blank", "noopener,noreferrer");
+                    try {
+                      window.open(project.githubUrl, "_blank", "noopener,noreferrer");
+                    } catch {
+                      window.location.href = project.githubUrl;
+                    }
                   }}
                   className="gap-2 text-sm sm:text-base border-white/20 hover:border-cyan-400/60"
                 >
@@ -207,6 +214,7 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
           </div>
         </motion.div>
       </div>
+    )}
     </AnimatePresence>
   );
 }

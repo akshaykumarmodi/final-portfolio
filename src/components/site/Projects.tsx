@@ -50,8 +50,32 @@ function ProjectCard({
 }: ProjectCardProps) {
   const { play } = useSound();
   const cardRef = useRef<HTMLDivElement>(null);
-  const isDraggingRef = useRef(false);
   const reducedMotion = typeof window !== "undefined" && prefersReducedMotion();
+
+  // Touch swipe tracking (replaces Framer Motion drag to avoid blocking button clicks)
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch) {
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isActive || !touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+    // Only count horizontal swipes (not vertical scrolls)
+    if (Math.abs(dx) > Math.abs(dy) && (Math.abs(dx) > 50 || (Math.abs(dx) > 20 && dt < 300))) {
+      if (dx < 0) onNext?.();
+      else onPrev?.();
+    }
+  }, [isActive, onNext, onPrev]);
 
   // Mouse tilt physics for the 3D card
   const mouseX = useMotionValue(0);
@@ -141,35 +165,19 @@ function ProjectCard({
         damping: 26,
         mass: 0.7,
       }}
-      drag={isActive ? "x" : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.25}
-      dragSnapToOrigin
-      onDragStart={() => {
-        isDraggingRef.current = true;
-      }}
-      onDragEnd={(_e, info) => {
-        // Small delay so click handlers can check isDraggingRef
-        setTimeout(() => { isDraggingRef.current = false; }, 50);
-        if (!isActive) return;
-        const swipeThreshold = 50;
-        if (info.offset.x < -swipeThreshold || info.velocity.x < -350) {
-          onNext?.();
-        } else if (info.offset.x > swipeThreshold || info.velocity.x > 350) {
-          onPrev?.();
-        }
-      }}
       onClick={!isActive ? onClick : undefined}
+      onTouchStart={isActive ? handleTouchStart : undefined}
+      onTouchEnd={isActive ? handleTouchEnd : undefined}
       onPointerMove={isActive ? handlePointerMove : undefined}
       onPointerLeave={isActive ? handlePointerLeave : undefined}
       className={`absolute top-0 select-none will-change-transform touch-pan-y [transform:translateZ(0)] ${
-        isActive ? "cursor-grab active:cursor-grabbing" : "cursor-pointer hover:opacity-85"
+        !isActive ? "cursor-pointer hover:opacity-85" : ""
       }`}
       style={{
         width: "min(480px, 86vw)",
         transformStyle: "preserve-3d",
         zIndex: position === "center" ? 30 : 10,
-        pointerEvents: position === "hidden" ? "none" : undefined,
+        pointerEvents: position === "hidden" ? "none" : "auto",
       }}
     >
       {/* Project Card Container */}
@@ -283,20 +291,18 @@ function ProjectCard({
 
         {/* Footer Actions: View Project CTA & Links */}
         <div
-          className="mt-5 flex items-center justify-between gap-3 pt-3.5 border-t border-white/10"
-          onPointerDownCapture={(e) => e.stopPropagation()}
+          className="relative z-30 mt-5 flex items-center justify-between gap-3 pt-3.5 border-t border-white/10"
         >
           <Button
             variant="hero"
             size="sm"
-            
             onMouseEnter={() => play("hover")}
             onClick={(e) => {
               e.stopPropagation();
-              if (isDraggingRef.current) return;
               play("click");
               onViewDetails(project);
             }}
+            onTouchEnd={(e) => e.stopPropagation()}
             className="gap-2 text-xs sm:text-sm px-4 py-2"
           >
             <Eye className="size-4" />
@@ -306,13 +312,18 @@ function ProjectCard({
           <div className="flex items-center gap-2">
             {project.liveUrl && (
               <button
-  
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isDraggingRef.current) return;
                   play("click");
-                  window.open(project.liveUrl, "_blank", "noopener,noreferrer");
+                  try {
+                    window.open(project.liveUrl, "_blank", "noopener,noreferrer");
+                  } catch {
+                    // Fallback: navigate in current tab if popup blocked
+                    window.location.href = project.liveUrl;
+                  }
                 }}
+                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="Open live demo"
                 className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-cyan-400/60 transition-all"
               >
@@ -322,13 +333,17 @@ function ProjectCard({
 
             {project.githubUrl && (
               <button
-  
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isDraggingRef.current) return;
                   play("click");
-                  window.open(project.githubUrl, "_blank", "noopener,noreferrer");
+                  try {
+                    window.open(project.githubUrl, "_blank", "noopener,noreferrer");
+                  } catch {
+                    window.location.href = project.githubUrl;
+                  }
                 }}
+                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="View source on GitHub"
                 className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-primary-glow/60 transition-all"
               >
@@ -338,12 +353,13 @@ function ProjectCard({
 
             {isAdmin && onEdit && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isDraggingRef.current) return;
                   play("click");
                   onEdit(project);
                 }}
+                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="Edit project"
                 className="glass-pill px-2.5 py-1 rounded-full text-[0.70rem] font-semibold text-purple-300 border border-purple-500/30 hover:border-purple-400"
               >

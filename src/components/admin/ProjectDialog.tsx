@@ -277,11 +277,10 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
     }
   };
 
-  if (!open) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-3 sm:p-5 md:p-8">
+      {open && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-3 sm:p-5 md:p-8">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -810,6 +809,7 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
           </form>
         </motion.div>
       </div>
+    )}
     </AnimatePresence>
   );
 }

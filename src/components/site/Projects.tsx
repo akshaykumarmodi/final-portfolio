@@ -279,7 +279,7 @@ function ProjectCard({
           <Button
             variant="hero"
             size="sm"
-            disabled={!isActive}
+            
             onMouseEnter={() => play("hover")}
             onClick={(e) => {
               e.stopPropagation();
@@ -295,7 +295,7 @@ function ProjectCard({
           <div className="flex items-center gap-2">
             {project.liveUrl && (
               <button
-                disabled={!isActive}
+  
                 onClick={(e) => {
                   e.stopPropagation();
                   play("click");
@@ -310,7 +310,7 @@ function ProjectCard({
 
             {project.githubUrl && (
               <button
-                disabled={!isActive}
+  
                 onClick={(e) => {
                   e.stopPropagation();
                   play("click");

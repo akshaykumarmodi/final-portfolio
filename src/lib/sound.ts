@@ -115,25 +115,18 @@ class SoundEngine {
       }
 
       // Synchronize state with native media events
-      audio.addEventListener("playing", () => {
-        if (!audio?.muted && (audio?.volume ?? 0) > 0) {
-          this._isPlaying = true;
-          this._enabled = true;
-          this.emit();
-        }
-      });
-
       audio.addEventListener("play", () => {
         if (!audio?.muted && (audio?.volume ?? 0) > 0) {
           this._isPlaying = true;
-          this._enabled = true;
           this.emit();
         }
       });
 
       audio.addEventListener("pause", () => {
-        this._isPlaying = false;
-        this.emit();
+        if (!this._enabled) {
+          this._isPlaying = false;
+          this.emit();
+        }
       });
 
       // Automatic source fallback in case of network CDN issues
@@ -167,7 +160,7 @@ class SoundEngine {
 
   /**
    * Immediately activates audible sound if enabled.
-   * Invoked by user gestures (tap, click, key).
+   * Can be invoked by any user gesture (scroll, mousemove, touch, click, key).
    */
   public unlock() {
     if (!this._enabled) return;
@@ -188,27 +181,33 @@ class SoundEngine {
     audio.muted = false;
     audio.volume = TARGET_VOLUME;
 
-    if (typeof audio.play === "function") {
-      try {
-        const promise = audio.play();
-        if (promise && typeof promise.then === "function") {
-          promise
-            .then(() => {
-              this._isPlaying = true;
-              this.cleanupUnlockListeners();
-              this.emit();
-            })
-            .catch(() => {
-              // Gesture may require another tap; listeners remain active
-            });
-        } else {
-          this._isPlaying = true;
-          this.cleanupUnlockListeners();
-          this.emit();
+    if (audio.paused) {
+      if (typeof audio.play === "function") {
+        try {
+          const promise = audio.play();
+          if (promise && typeof promise.then === "function") {
+            promise
+              .then(() => {
+                this._isPlaying = true;
+                this.cleanupUnlockListeners();
+                this.emit();
+              })
+              .catch(() => {
+                // Browser may require another gesture tick
+              });
+          } else {
+            this._isPlaying = true;
+            this.cleanupUnlockListeners();
+            this.emit();
+          }
+        } catch {
+          // Keep listening
         }
-      } catch {
-        // Keep listeners active
       }
+    } else {
+      this._isPlaying = true;
+      this.cleanupUnlockListeners();
+      this.emit();
     }
   }
 
@@ -224,13 +223,23 @@ class SoundEngine {
       this.unlock();
     };
 
-    // Authentic user activation triggers per W3C specification
+    // Universal interaction triggers across desktop and mobile devices
     const events = [
       "pointerdown",
-      "touchstart",
+      "pointerup",
       "mousedown",
+      "mouseup",
+      "touchstart",
+      "touchend",
+      "touchmove",
       "click",
       "keydown",
+      "keyup",
+      "wheel",
+      "scroll",
+      "pointermove",
+      "mousemove",
+      "focus",
     ];
 
     events.forEach((e) => {
@@ -264,7 +273,7 @@ class SoundEngine {
     const audio = this.ensureAudio();
     if (!audio) return;
 
-    // 1. Direct unmuted playback attempt immediately on link open
+    // 1. First attempt: Direct unmuted playback immediately on link click / page load
     audio.volume = TARGET_VOLUME;
     audio.muted = false;
 
@@ -272,36 +281,35 @@ class SoundEngine {
       try {
         const promise = audio.play();
         if (promise && typeof promise.then === "function") {
-          promise
-            .then(() => {
-              this._isPlaying = true;
-              this.cleanupUnlockListeners();
-              this.emit();
-            })
-            .catch(() => {
-              // Direct unmuted autoplay held back by browser policy
-              // Keep audio timeline ready in muted mode and activate upon user gesture
-              audio.muted = true;
-              if (typeof audio.play === "function") {
-                audio.play().catch(() => {});
-              }
-              this.registerUnlockListeners();
-            });
-        } else {
+          await promise;
+        }
+        if (!audio.paused && !audio.muted) {
           this._isPlaying = true;
           this.cleanupUnlockListeners();
           this.emit();
+          return;
         }
       } catch {
-        audio.muted = true;
-        if (typeof audio.play === "function") {
-          audio.play().catch(() => {});
-        }
-        this.registerUnlockListeners();
+        // Direct unmuted autoplay held back by browser policy
+        this._isPlaying = false;
       }
-    } else {
-      this.registerUnlockListeners();
     }
+
+    // 2. Pre-buffer and start audio timeline (muted playback is universally allowed)
+    audio.muted = true;
+    if (typeof audio.play === "function") {
+      try {
+        const promise = audio.play();
+        if (promise && typeof promise.then === "function") {
+          promise.catch(() => {});
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // 3. Register universal gesture & movement listeners to unmute and play audible sound
+    this.registerUnlockListeners();
   }
 
   async setEnabled(on: boolean) {
@@ -331,18 +339,23 @@ class SoundEngine {
     }
 
     this.cleanupUnlockListeners();
+    this.unlock();
 
     const audio = this.ensureAudio();
     if (audio) {
       audio.volume = TARGET_VOLUME;
       audio.muted = false;
-      if (typeof audio.play === "function") {
-        try {
-          await audio.play();
+      if (audio.paused) {
+        if (typeof audio.play === "function") {
+          try {
+            await audio.play();
+            this._isPlaying = true;
+          } catch {
+            this._isPlaying = false;
+            this.registerUnlockListeners();
+          }
+        } else {
           this._isPlaying = true;
-        } catch {
-          this._isPlaying = false;
-          this.registerUnlockListeners();
         }
       } else {
         this._isPlaying = true;
@@ -380,10 +393,7 @@ class SoundEngine {
   }
 
   play(_kind: "hover" | "click" | "success" = "click") {
-    // When any button or link on the page is clicked, ensure background audio is unmuted and playing
-    if (this._enabled && (!this._isPlaying || (this.audio && this.audio.paused))) {
-      this.unlock();
-    }
+    // Strictly no-op: preserve signature without synthetic audio fx
   }
 }
 

@@ -123,27 +123,16 @@ function RootShell({ children }: { children: ReactNode }) {
       <body>
         <audio
           id="akm-bg-audio"
+          src="/audio/peaceful-piano-ambient.mp3"
           autoPlay
           loop
           playsInline
-          webkit-playsinline="true"
           preload="auto"
           aria-hidden="true"
-          style={{
-            position: "fixed",
-            bottom: "0px",
-            right: "0px",
-            width: "1px",
-            height: "1px",
-            opacity: 0.01,
-            pointerEvents: "none",
-            zIndex: -1,
-          }}
+          style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
         >
-          <source src="/audio/peaceful-piano-ambient.m4a" type="audio/mp4" />
           <source src="/audio/peaceful-piano-ambient.mp3" type="audio/mpeg" />
           <source src="/audio/peaceful-piano.mp3" type="audio/mpeg" />
-          <source src="/audio/cinematic-ambient.mp3" type="audio/mpeg" />
         </audio>
         <script
           dangerouslySetInnerHTML={{
@@ -160,52 +149,78 @@ function RootShell({ children }: { children: ReactNode }) {
                   } catch(e){}
 
                   var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
-                    (navigator.maxTouchPoints > 0 && /Macintosh|Mobile|Tablet/i.test(navigator.userAgent)) ||
-                    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+                    (navigator.maxTouchPoints > 0 && /Mobile|Tablet/i.test(navigator.userAgent));
 
-                  a.muted = false;
-                  try { a.volume = 0.75; } catch(e){}
-
-                  if ('audioSession' in navigator) {
-                    try {
-                      navigator.audioSession.type = 'playback';
-                    } catch(e){}
-                  }
-
-                  var isPlaying = false;
-                  var unlockBound = false;
-
-                  // -------------------------------------------------------------
-                  // DESKTOP: Preserve exact desktop audio behavior completely
-                  // -------------------------------------------------------------
+                  // =========================================================================
+                  // 1. DESKTOP / LAPTOP (100% RESTORED TO ORIGINAL WORKING 199e46d BEHAVIOR)
+                  // =========================================================================
                   if (!isMobile) {
+                    a.volume = 0.75;
+                    a.muted = false;
+
+                    function tryPlayDesktop() {
+                      if (!a) return;
+                      a.muted = false;
+                      a.volume = 0.75;
+                      if (a.paused && typeof a.play === 'function') {
+                        a.play().catch(function() {});
+                      }
+                    }
+
+                    // Direct unmuted autoplay on initial website entry
                     var p = a.play();
-                    if (p !== undefined && typeof p.then === 'function') {
-                      p.then(function() {
-                        isPlaying = true;
-                      }).catch(function() {
-                        function onDesktopGesture() {
-                          ['click', 'keydown', 'pointerdown', 'mousedown'].forEach(function(ev) {
-                            window.removeEventListener(ev, onDesktopGesture, true);
-                            document.removeEventListener(ev, onDesktopGesture, true);
+                    if (p !== undefined) {
+                      p.catch(function() {
+                        var events = [
+                          'pointerdown',
+                          'pointerup',
+                          'pointermove',
+                          'touchstart',
+                          'touchend',
+                          'touchmove',
+                          'mousedown',
+                          'mouseup',
+                          'mousemove',
+                          'click',
+                          'keydown',
+                          'wheel',
+                          'scroll',
+                          'mouseenter',
+                          'focus'
+                        ];
+                        function onAnyDesktopInteraction() {
+                          events.forEach(function(ev) {
+                            window.removeEventListener(ev, onAnyDesktopInteraction, true);
+                            document.removeEventListener(ev, onAnyDesktopInteraction, true);
                           });
-                          a.muted = false;
-                          try { a.volume = 0.75; } catch(e){}
-                          a.play().catch(function(){});
+                          tryPlayDesktop();
                         }
-                        ['click', 'keydown', 'pointerdown', 'mousedown'].forEach(function(ev) {
-                          window.addEventListener(ev, onDesktopGesture, { capture: true, once: true, passive: true });
-                          document.addEventListener(ev, onDesktopGesture, { capture: true, once: true, passive: true });
+                        events.forEach(function(ev) {
+                          window.addEventListener(ev, onAnyDesktopInteraction, { capture: true, once: true, passive: true });
+                          document.addEventListener(ev, onAnyDesktopInteraction, { capture: true, once: true, passive: true });
                         });
                       });
                     }
                     return;
                   }
 
-                  // -------------------------------------------------------------
-                  // MOBILE-ONLY: iPhone Safari, iPhone Chrome, Android Chrome
-                  // -------------------------------------------------------------
-                  function primeMobileAudioHardware() {
+                  // =========================================================================
+                  // 2. MOBILE ONLY: iPhone Safari, iPhone Chrome, Android Chrome
+                  // =========================================================================
+                  if ('audioSession' in navigator) {
+                    try {
+                      navigator.audioSession.type = 'playback';
+                    } catch(e){}
+                  }
+
+                  a.muted = false;
+                  try { a.volume = 0.75; } catch(e){}
+
+                  var mobilePlaying = false;
+                  var mobileUnlockBound = false;
+                  var mobileInFlight = false;
+
+                  function primeMobileHardware() {
                     if ('audioSession' in navigator) {
                       try {
                         navigator.audioSession.type = 'playback';
@@ -227,82 +242,87 @@ function RootShell({ children }: { children: ReactNode }) {
                     } catch(e){}
                   }
 
-                  function tryMobilePlay() {
-                    if (!a || isPlaying) return;
+                  function tryMobileStart() {
+                    if (!a || mobilePlaying || mobileInFlight) return;
                     if (!a.paused && a.currentTime > 0) {
-                      isPlaying = true;
+                      mobilePlaying = true;
                       cleanupMobileListeners();
                       return;
                     }
 
-                    primeMobileAudioHardware();
+                    primeMobileHardware();
                     a.muted = false;
                     try { a.volume = 0.75; } catch(e){}
 
-                    var p = a.play();
-                    if (p !== undefined && typeof p.then === 'function') {
-                      p.then(function() {
-                        isPlaying = true;
+                    mobileInFlight = true;
+                    var playPromise = a.play();
+                    if (playPromise !== undefined && typeof playPromise.then === 'function') {
+                      playPromise.then(function() {
+                        mobileInFlight = false;
+                        mobilePlaying = true;
                         cleanupMobileListeners();
                       }).catch(function() {
-                        // Awaiting user gesture
+                        mobileInFlight = false;
                       });
-                    } else if (!a.paused) {
-                      isPlaying = true;
-                      cleanupMobileListeners();
+                    } else {
+                      mobileInFlight = false;
+                      if (!a.paused) {
+                        mobilePlaying = true;
+                        cleanupMobileListeners();
+                      }
                     }
                   }
 
-                  // 1. Attempt mobile autoplay on site open
-                  tryMobilePlay();
-                  window.addEventListener('DOMContentLoaded', tryMobilePlay, { once: true });
-                  window.addEventListener('load', tryMobilePlay, { once: true });
-                  window.addEventListener('pageshow', tryMobilePlay, { once: true });
+                  // Attempt mobile autoplay immediately on open
+                  tryMobileStart();
+                  window.addEventListener('DOMContentLoaded', tryMobileStart, { once: true });
+                  window.addEventListener('load', tryMobileStart, { once: true });
+                  window.addEventListener('pageshow', tryMobileStart, { once: true });
 
-                  // 2. Mobile first-interaction unlock (touchstart, pointerdown, touchend, pointerup, click)
-                  // Ensures playback starts on the very first touch without waiting for a second tap
+                  // Unlocks immediately on the FIRST legitimate mobile interaction (no second tap required)
                   var mobileEvents = ['touchstart', 'pointerdown', 'touchend', 'pointerup', 'click'];
 
-                  function onMobileFirstInteraction() {
-                    tryMobilePlay();
+                  function onMobileInteraction() {
+                    tryMobileStart();
                   }
 
                   function cleanupMobileListeners() {
-                    if (!unlockBound) return;
-                    unlockBound = false;
+                    if (!mobileUnlockBound) return;
+                    mobileUnlockBound = false;
                     mobileEvents.forEach(function(ev) {
-                      window.removeEventListener(ev, onMobileFirstInteraction, true);
-                      document.removeEventListener(ev, onMobileFirstInteraction, true);
+                      window.removeEventListener(ev, onMobileInteraction, true);
+                      document.removeEventListener(ev, onMobileInteraction, true);
                       if (document.body) {
-                        document.body.removeEventListener(ev, onMobileFirstInteraction, true);
+                        document.body.removeEventListener(ev, onMobileInteraction, true);
                       }
                     });
                   }
 
-                  unlockBound = true;
+                  mobileUnlockBound = true;
                   mobileEvents.forEach(function(ev) {
-                    window.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
-                    document.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                    window.addEventListener(ev, onMobileInteraction, { capture: true, passive: true });
+                    document.addEventListener(ev, onMobileInteraction, { capture: true, passive: true });
                   });
 
                   if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', function() {
-                      if (document.body && unlockBound && !isPlaying) {
+                      if (document.body && mobileUnlockBound && !mobilePlaying) {
                         mobileEvents.forEach(function(ev) {
-                          document.body.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                          document.body.addEventListener(ev, onMobileInteraction, { capture: true, passive: true });
                         });
                       }
                     }, { once: true });
-                  } else if (document.body && unlockBound && !isPlaying) {
+                  } else if (document.body && mobileUnlockBound && !mobilePlaying) {
                     mobileEvents.forEach(function(ev) {
-                      document.body.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                      document.body.addEventListener(ev, onMobileInteraction, { capture: true, passive: true });
                     });
                   }
 
                   a.addEventListener('playing', function() {
-                    isPlaying = true;
+                    mobilePlaying = true;
                     cleanupMobileListeners();
                   }, { once: true });
+
                 } catch(e){}
               })();
             `,

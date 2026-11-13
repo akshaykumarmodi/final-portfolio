@@ -37,16 +37,14 @@ export function SmoothScroll() {
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            // Pure lerp damping for Mac/desktop without fixed duration or easing override.
-            // This prevents rapid wheel/trackpad micro-deltas from resetting the animation curve.
-            lerp: 0.08,
+            // Fast & buttery smooth lerp damping for Mac/desktop:
+            // 0.12 closed distance per frame provides immediate responsiveness without sluggish drag
+            lerp: 0.12,
             smoothWheel: true,
-            wheelMultiplier: 1.0,
-            // Native hardware touch scrolling on phones for 100% stutter-free 60/120Hz touch
-            syncTouch: false,
-            touchMultiplier: 1.0,
+            // 1.25 covers distance quickly with natural glide on trackpads and mouse wheels
+            wheelMultiplier: 1.25,
+            touchMultiplier: 1.5,
             infinite: false,
-            overscroll: false,
           });
 
           lenisRef.current = instance;

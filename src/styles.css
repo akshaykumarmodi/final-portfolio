@@ -199,8 +199,6 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow-x: clip;
-    /* Prevent native browser scroll bounce from fighting Lenis interpolation */
-    overscroll-behavior: none;
     min-height: 100vh;
   }
 

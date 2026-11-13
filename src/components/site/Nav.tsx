@@ -99,9 +99,11 @@ export function Nav() {
     }, 150);
   }, []);
 
-  // Active section detection on scroll across all portfolio sections
+  // Active section detection on scroll across all portfolio sections (throttled to RAF)
   useEffect(() => {
-    const onScroll = () => {
+    let ticking = false;
+
+    const checkActive = () => {
       const introEl = document.getElementById("intro");
       if (introEl) {
         const homeEl = document.getElementById("home");
@@ -123,15 +125,24 @@ export function Nav() {
           const rect = el.getBoundingClientRect();
           if (rect.top <= 160) {
             setActive((prev) => (prev !== id ? id : prev));
+            ticking = false;
             return;
           }
         }
       }
       setActive((prev) => (prev !== "home" ? "home" : prev));
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(checkActive);
+      }
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    checkActive();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 

@@ -74,46 +74,11 @@ function SiteFooter() {
 }
 
 function Index() {
-  const [hasEnteredPortfolio, setHasEnteredPortfolio] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return Boolean(window.location.hash && window.location.hash !== "#intro");
-  });
-
-  useEffect(() => {
-    const onScroll = () => {
-      const homeEl = document.getElementById("home");
-      if (homeEl) {
-        const homeTop = homeEl.getBoundingClientRect().top;
-        if (homeTop <= 100) {
-          setHasEnteredPortfolio(true);
-        } else if (homeTop > 200) {
-          setHasEnteredPortfolio(false);
-        }
-      }
-    };
-
-    const onNavEvent = (e: Event) => {
-      const detail = (e as CustomEvent<{ id: string }>).detail;
-      if (detail?.id && detail.id !== "intro") {
-        setHasEnteredPortfolio(true);
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("portfolio:navigation", onNavEvent);
-    onScroll();
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("portfolio:navigation", onNavEvent);
-    };
-  }, []);
-
   return (
     <main className="relative">
       <Nav />
       {/* 00 — SCROLL-DRIVEN CINEMATIC INTRO */}
-      <ScrollCinematicIntro onEnterPortfolio={() => setHasEnteredPortfolio(true)} />
+      <ScrollCinematicIntro />
 
       {/* 01 — HERO */}
       <Hero />

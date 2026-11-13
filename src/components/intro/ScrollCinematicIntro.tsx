@@ -78,16 +78,11 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     }
   }, []);
 
-  // Scroll listener synchronization (both passive window scroll and Lenis if active)
+  // Scroll listener synchronization (single passive listener)
   useEffect(() => {
     window.addEventListener("scroll", updateProgress, { passive: true });
     window.addEventListener("resize", updateProgress);
     window.addEventListener("resize", updateCanvasResolution);
-
-    const lenis = getLenis();
-    if (lenis) {
-      lenis.on("scroll", updateProgress);
-    }
 
     updateProgress();
     updateCanvasResolution();
@@ -96,9 +91,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       window.removeEventListener("scroll", updateProgress);
       window.removeEventListener("resize", updateProgress);
       window.removeEventListener("resize", updateCanvasResolution);
-      if (lenis) {
-        lenis.off("scroll", updateProgress);
-      }
     };
   }, [updateProgress, updateCanvasResolution]);
 

@@ -309,7 +309,7 @@ export function HeroFog() {
       const w = Math.max(Math.floor(containerW * scale), 1);
       const h = Math.max(Math.floor(containerH * scale), 1);
 
-      if (canvas.width !== w || canvas.height !== h) {
+      if (Math.abs(canvas.width - w) > 4 || Math.abs(canvas.height - h) > 4) {
         canvas.width = w;
         canvas.height = h;
         gl.viewport(0, 0, w, h);

@@ -4,7 +4,7 @@ import { sound, isMobileDevice } from "@/lib/sound";
 /** Sound state hook. Audio is completely disabled on mobile phones. */
 export function useSound() {
   const [isMobile, setIsMobile] = useState(() => isMobileDevice());
-  const [enabled, setEnabled] = useState(() => (!isMobileDevice() && (sound.enabled ?? true)));
+  const [enabled, setEnabled] = useState(() => (!isMobileDevice() && (sound.enabled ?? false)));
   const [isPlaying, setIsPlaying] = useState(() => (!isMobileDevice() && (sound.isPlaying ?? false)));
 
   useEffect(() => {
@@ -18,11 +18,11 @@ export function useSound() {
 
     const unsub = typeof sound.subscribe === "function"
       ? sound.subscribe((_active) => {
-          setEnabled(sound.enabled ?? true);
+          setEnabled(sound.enabled ?? false);
           setIsPlaying(sound.isPlaying ?? false);
         })
       : () => {};
-    setEnabled(sound.enabled ?? true);
+    setEnabled(sound.enabled ?? false);
     setIsPlaying(sound.isPlaying ?? false);
     return unsub;
   }, []);

@@ -66,31 +66,9 @@ class SoundEngine {
   private currentSourceIndex = 0;
 
   constructor() {
-    this._enabled = !this.isMobile && this.getStoredPreference();
+    this._enabled = false;
     this._isPlaying = false;
-
-    if (typeof window !== "undefined" && !this.isMobile) {
-      // 1. Initial attempt on DOM ready
-      if (document.readyState === "complete" || document.readyState === "interactive") {
-        void this.autoStart();
-      } else {
-        window.addEventListener("DOMContentLoaded", () => void this.autoStart(), { once: true });
-        window.addEventListener("load", () => void this.autoStart(), { once: true });
-      }
-
-      // 2. Seamlessly resume if browser paused audio when user switched tabs (e.g. clicked Live Demo or GitHub)
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && this._enabled && this.audio && this.audio.paused) {
-          void this.safePlay();
-        }
-      });
-
-      window.addEventListener("focus", () => {
-        if (this._enabled && this.audio && this.audio.paused) {
-          void this.safePlay();
-        }
-      });
-    }
+    // Strictly no autoplay on page load. Sound can ONLY be played by clicking the on/off button.
   }
 
   get isMobile(): boolean {
@@ -232,42 +210,7 @@ class SoundEngine {
   }
 
   private registerUnlockListeners() {
-    if (this.isMobile) return;
-    if (this._unlockRegistered) return;
-    if (!this._enabled) return;
-
-    this._unlockRegistered = true;
-
-    const unlockHandler = () => {
-      if (!this._enabled) {
-        this.cleanupUnlockListeners();
-        return;
-      }
-      void this.safePlay();
-    };
-
-    // Authentic user activation triggers per W3C specification
-    const events = [
-      "pointerdown",
-      "pointerup",
-      "touchstart",
-      "touchend",
-      "mousedown",
-      "mouseup",
-      "click",
-      "keydown",
-    ];
-
-    events.forEach((e) => {
-      window.addEventListener(e, unlockHandler, { capture: true, passive: true });
-    });
-
-    this.unlockCleanup = () => {
-      events.forEach((e) => {
-        window.removeEventListener(e, unlockHandler, { capture: true });
-      });
-      this._unlockRegistered = false;
-    };
+    // No-op: Sound can ONLY be played by clicking the On/Off button.
   }
 
   /**
@@ -330,12 +273,7 @@ class SoundEngine {
         this.emit();
         return true;
       } catch {
-        // Direct unmuted autoplay held back by browser policy
-        // Keep listeners active so the very first interaction triggers audio
         this._isPlaying = false;
-        if (this._enabled) {
-          this.registerUnlockListeners();
-        }
         return false;
       } finally {
         this._playPromise = null;
@@ -347,18 +285,14 @@ class SoundEngine {
   }
 
   /**
-   * Immediately activates audible sound if enabled.
+   * Unlock hook: Sound can ONLY be played by the On/Off button.
    */
   public unlock() {
-    if (this.isMobile || !this._enabled) return;
-    void this.safePlay();
+    // Strictly no-op: gestures and section navigation do not trigger audio.
   }
 
   async autoStart() {
-    if (this.isMobile || typeof window === "undefined") return;
-    if (!this._enabled) return;
-
-    await this.safePlay();
+    // Strictly no-op: Sound can ONLY be played by the On/Off button, never on page load.
   }
 
   async setEnabled(on: boolean) {
@@ -422,11 +356,8 @@ class SoundEngine {
   }
 
   play(_kind: "hover" | "click" | "success" = "click") {
-    if (this.isMobile) return;
-    // When clicking any link or button, resume audio ONLY if it was unexpectedly paused
-    if (this._enabled && this.audio && this.audio.paused) {
-      void this.safePlay();
-    }
+    // Strictly no-op: UI clicks and hovers do not play or resume sound.
+    // Sound can ONLY be played by clicking the On/Off button.
   }
 }
 

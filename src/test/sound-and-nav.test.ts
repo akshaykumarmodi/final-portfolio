@@ -46,6 +46,33 @@ describe("SoundEngine", () => {
     expect(sound.isPlaying).toBe(false);
   });
 
+  it("sound can ONLY be played by toggle() and not by autoStart, unlock, or play", async () => {
+    await sound.setEnabled(false);
+    expect(sound.isPlaying).toBe(false);
+
+    // autoStart should not start sound
+    await sound.autoStart();
+    expect(sound.isPlaying).toBe(false);
+
+    // unlock should not start sound
+    sound.unlock();
+    expect(sound.isPlaying).toBe(false);
+
+    // play should not start sound
+    sound.play("click");
+    expect(sound.isPlaying).toBe(false);
+
+    // toggle() (the button click) starts sound
+    await sound.toggle();
+    expect(sound.isPlaying).toBe(true);
+    expect(sound.enabled).toBe(true);
+
+    // toggle() (the button click) turns sound off
+    await sound.toggle();
+    expect(sound.isPlaying).toBe(false);
+    expect(sound.enabled).toBe(false);
+  });
+
   it("notifies subscribers when enabled state changes", async () => {
     const subscriber = vi.fn();
     const unsub = sound.subscribe(subscriber);

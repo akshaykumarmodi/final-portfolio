@@ -279,7 +279,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       onTouchMove={() => sound.unlock?.()}
       onPointerDown={() => sound.unlock?.()}
       onPointerUp={() => sound.unlock?.()}
-      onPointerMove={() => sound.unlock?.()}
       onClick={() => sound.unlock?.()}
       className="relative w-full h-[350vh] bg-[#070510] noise-overlay"
       aria-label="Cinematic Interactive Intro"

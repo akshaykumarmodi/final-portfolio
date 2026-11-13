@@ -19,7 +19,7 @@ const STORAGE_KEY = "akm-sound";
 const AUDIO_SOURCES = [
   "/audio/peaceful-piano-ambient.mp3",
   "/audio/peaceful-piano.mp3",
-  "/audio/cinematic-ambient.mp3",
+  "/audio/peaceful-piano-ambient.m4a",
   "/audio/Peaceful%20Piano%20%2B%20Nature%20Sounds%2020%20Minutes%20of%20Calm%20for%20Sleep.mp3",
 ];
 
@@ -119,7 +119,11 @@ class SoundEngine {
         audio.loop = true;
         audio.setAttribute("playsinline", "true");
         audio.setAttribute("webkit-playsinline", "true");
-        audio.className = "sr-only";
+        audio.style.position = "fixed";
+        audio.style.top = "-9999px";
+        audio.style.left = "-9999px";
+        audio.style.opacity = "0";
+        audio.style.pointerEvents = "none";
         audio.setAttribute("aria-hidden", "true");
         try {
           document.body.appendChild(audio);
@@ -315,29 +319,29 @@ class SoundEngine {
       }
     }
 
-    // Awaken OS/browser audio subsystem
+    // For mobile (iOS Safari / Chrome / Android): awaken audio session and Web Audio context
     const isMobile =
       typeof navigator !== "undefined" &&
       (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
         (navigator.maxTouchPoints > 0 && /Mobile|Tablet/i.test(navigator.userAgent)));
 
-    try {
-      if (typeof window !== "undefined") {
-        if (isMobile && "audioSession" in navigator) {
-          try {
-            (navigator as unknown as { audioSession: { type: string } }).audioSession.type = "playback";
-          } catch {
-            /* ignore */
+    if (isMobile) {
+      try {
+        if (typeof window !== "undefined") {
+          if ("audioSession" in navigator) {
+            try {
+              (navigator as unknown as { audioSession: { type: string } }).audioSession.type = "playback";
+            } catch {
+              /* ignore */
+            }
           }
-        }
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        if (AudioCtx) {
-          const actx = (window as unknown as { __akm_actx?: AudioContext }).__akm_actx || new AudioCtx();
-          (window as unknown as { __akm_actx?: AudioContext }).__akm_actx = actx;
-          if (actx.state === "suspended") {
-            void actx.resume();
-          }
-          if (isMobile) {
+          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtx) {
+            const actx = (window as unknown as { __akm_actx?: AudioContext }).__akm_actx || new AudioCtx();
+            (window as unknown as { __akm_actx?: AudioContext }).__akm_actx = actx;
+            if (actx.state === "suspended") {
+              void actx.resume();
+            }
             try {
               const buffer = actx.createBuffer(1, 1, 22050);
               const source = actx.createBufferSource();
@@ -349,9 +353,9 @@ class SoundEngine {
             }
           }
         }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
     }
 
     audio.muted = false;

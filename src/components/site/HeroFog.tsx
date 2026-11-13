@@ -303,9 +303,10 @@ export function HeroFog() {
 
     const updateSize = () => {
       const rect = container.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1);
-      const w = Math.max(Math.floor(rect.width * dpr), 1);
-      const h = Math.max(Math.floor(rect.height * dpr), 1);
+      // Cap render buffer dimension to max 1280px for rock-solid full-screen GPU frame pacing
+      const scale = Math.min(1, 1280 / Math.max(rect.width, 1));
+      const w = Math.max(Math.floor(rect.width * scale), 1);
+      const h = Math.max(Math.floor(rect.height * scale), 1);
 
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;

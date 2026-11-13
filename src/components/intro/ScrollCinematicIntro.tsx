@@ -24,6 +24,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   const videoRef = useRef<HTMLVideoElement>(null);
   const targetProgressRef = useRef(0);
   const lastDrawnIndexRef = useRef<number>(-1);
+  const fgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const bgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
   const loadedFlagsRef = useRef<boolean[]>(new Array(TOTAL_FRAMES).fill(false));
@@ -57,18 +59,20 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     setIsNearEnd(progress >= 0.70);
   }, []);
 
-  // Dynamically size foreground canvas to device physical pixel resolution (prevents CSS upscaling blur)
+  // Dynamically size foreground canvas to device physical pixel resolution (capped at native 1920x1080 to prevent 4K memory thrashing)
   const updateCanvasResolution = useCallback(() => {
     const fgCanvas = canvasRef.current;
     if (!fgCanvas) return;
-    const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 1.5) : 1;
     const rect = fgCanvas.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      const targetW = Math.max(1920, Math.round(rect.width * dpr));
-      const targetH = Math.max(1080, Math.round(rect.height * dpr));
+      // Native source frames are 1920x1080. Capping at 1920x1080 prevents allocating 4K/retina 3840x2160 canvases in full-screen mode
+      const targetW = Math.min(1920, Math.max(1280, Math.round(rect.width * dpr)));
+      const targetH = Math.min(1080, Math.max(720, Math.round(rect.height * dpr)));
       if (fgCanvas.width !== targetW || fgCanvas.height !== targetH) {
         fgCanvas.width = targetW;
         fgCanvas.height = targetH;
+        fgCtxRef.current = null;
         lastDrawnIndexRef.current = -1; // Force redraw with sharp resolution
       }
     }
@@ -107,7 +111,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     // 1. Sharp Foreground Canvas (Full physical resolution + high-quality smoothing)
     const fgCanvas = canvasRef.current;
     if (fgCanvas) {
-      const fgCtx = fgCanvas.getContext("2d", { alpha: false });
+      if (!fgCtxRef.current) {
+        fgCtxRef.current = fgCanvas.getContext("2d", { alpha: false });
+      }
+      const fgCtx = fgCtxRef.current;
       if (fgCtx) {
         fgCtx.imageSmoothingEnabled = true;
         fgCtx.imageSmoothingQuality = "high";
@@ -118,7 +125,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     // 2. Blurred Ambient Background Canvas (960x540 for lightweight GPU performance)
     const bgCanvas = bgCanvasRef.current;
     if (bgCanvas) {
-      const bgCtx = bgCanvas.getContext("2d", { alpha: false });
+      if (!bgCtxRef.current) {
+        bgCtxRef.current = bgCanvas.getContext("2d", { alpha: false });
+      }
+      const bgCtx = bgCtxRef.current;
       if (bgCtx) {
         bgCtx.drawImage(img, 0, 0, 960, 540);
       }
@@ -178,10 +188,17 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   }, [drawFramePair]);
 
   // requestAnimationFrame scroll-driven continuous canvas rendering loop
+  // Automatically paused when offscreen to ensure full 60/120fps frame rates across full-screen portfolio scrolling
   useEffect(() => {
     let rafId: number;
+    let isVisible = true;
 
     const render = () => {
+      if (!isVisible) {
+        rafId = 0;
+        return;
+      }
+
       // Map 0.0 to 0.85 to frames 0 to 119; 0.85 to 1.0 holds frame 119 (final frame)
       const normalized = Math.min(targetProgressRef.current / 0.85, 1);
       const targetFrame = Math.min(Math.floor(normalized * TOTAL_FRAMES), TOTAL_FRAMES - 1);
@@ -207,8 +224,27 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
     rafId = requestAnimationFrame(render);
 
+    const container = containerRef.current;
+    let io: IntersectionObserver | null = null;
+    if (container && typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          const nextVisible = entry ? entry.isIntersecting : true;
+          if (nextVisible && !isVisible) {
+            isVisible = true;
+            if (!rafId) rafId = requestAnimationFrame(render);
+          } else if (!nextVisible && isVisible) {
+            isVisible = false;
+          }
+        },
+        { threshold: 0 },
+      );
+      io.observe(container);
+    }
+
     return () => {
       cancelAnimationFrame(rafId);
+      io?.disconnect();
     };
   }, [drawFramePair]);
 

@@ -124,7 +124,6 @@ function RootShell({ children }: { children: ReactNode }) {
         <audio
           id="akm-bg-audio"
           src="/audio/peaceful-piano-ambient.mp3"
-          autoPlay
           loop
           playsInline
           preload="auto"
@@ -139,17 +138,11 @@ function RootShell({ children }: { children: ReactNode }) {
                   var a = document.getElementById('akm-bg-audio');
                   if (!a) return;
 
-                  if (localStorage.getItem('akm-sound') === 'off') {
-                    a.pause();
-                    return;
-                  }
-
                   a.volume = 0.75;
                   a.muted = false;
 
                   function tryPlay() {
                     if (!a) return;
-                    if (localStorage.getItem('akm-sound') === 'off') return;
                     a.muted = false;
                     a.volume = 0.75;
                     if (a.paused && typeof a.play === 'function') {
@@ -161,7 +154,7 @@ function RootShell({ children }: { children: ReactNode }) {
                   var p = a.play();
                   if (p !== undefined) {
                     p.catch(function() {
-                      // 2. If browser autoplay policy holds back sound without interaction on a fresh domain,
+                      // 2. If browser autoplay policy holds back sound without interaction,
                       // wake up and play on visitor's very first interaction on the page
                       var events = [
                         'pointerdown',
@@ -171,9 +164,7 @@ function RootShell({ children }: { children: ReactNode }) {
                         'mousedown',
                         'mouseup',
                         'click',
-                        'keydown',
-                        'wheel',
-                        'scroll'
+                        'keydown'
                       ];
                       function onFirstGesture() {
                         events.forEach(function(ev) {

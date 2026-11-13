@@ -124,16 +124,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <audio
           id="akm-bg-audio"
           src="/audio/peaceful-piano-ambient.mp3"
-          autoPlay
           loop
           playsInline
           preload="auto"
           aria-hidden="true"
           style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
-        >
-          <source src="/audio/peaceful-piano-ambient.mp3" type="audio/mpeg" />
-          <source src="/audio/peaceful-piano.mp3" type="audio/mpeg" />
-        </audio>
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -141,12 +137,14 @@ function RootShell({ children }: { children: ReactNode }) {
                 try {
                   var a = document.getElementById('akm-bg-audio');
                   if (!a) return;
+                  if (localStorage.getItem('akm-sound') === 'off') return;
 
                   a.volume = 0.75;
                   a.muted = false;
 
                   function tryPlay() {
                     if (!a) return;
+                    if (localStorage.getItem('akm-sound') === 'off') return;
                     a.muted = false;
                     a.volume = 0.75;
                     if (a.paused && typeof a.play === 'function') {
@@ -158,34 +156,26 @@ function RootShell({ children }: { children: ReactNode }) {
                   var p = a.play();
                   if (p !== undefined) {
                     p.catch(function() {
-                      // 2. Play on any natural visitor movement or interaction (no click required!)
+                      // 2. If browser autoplay policy holds back sound without interaction,
+                      // wake up and play on visitor's very first interaction on the page
                       var events = [
                         'pointerdown',
                         'pointerup',
-                        'pointermove',
                         'touchstart',
                         'touchend',
-                        'touchmove',
                         'mousedown',
                         'mouseup',
-                        'mousemove',
                         'click',
-                        'keydown',
-                        'wheel',
-                        'scroll',
-                        'mouseenter',
-                        'focus'
+                        'keydown'
                       ];
-                      function onAnyInteraction() {
+                      function onFirstGesture() {
                         events.forEach(function(ev) {
-                          window.removeEventListener(ev, onAnyInteraction, true);
-                          document.removeEventListener(ev, onAnyInteraction, true);
+                          window.removeEventListener(ev, onFirstGesture, true);
                         });
                         tryPlay();
                       }
                       events.forEach(function(ev) {
-                        window.addEventListener(ev, onAnyInteraction, { capture: true, once: true, passive: true });
-                        document.addEventListener(ev, onAnyInteraction, { capture: true, once: true, passive: true });
+                        window.addEventListener(ev, onFirstGesture, { capture: true, once: true, passive: true });
                       });
                     });
                   }

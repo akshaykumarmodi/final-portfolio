@@ -137,14 +137,12 @@ function RootShell({ children }: { children: ReactNode }) {
                 try {
                   var a = document.getElementById('akm-bg-audio');
                   if (!a) return;
-                  if (localStorage.getItem('akm-sound') === 'off') return;
 
                   a.volume = 0.75;
                   a.muted = false;
 
                   function tryPlay() {
                     if (!a) return;
-                    if (localStorage.getItem('akm-sound') === 'off') return;
                     a.muted = false;
                     a.volume = 0.75;
                     if (a.paused && typeof a.play === 'function') {

@@ -77,8 +77,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   // Scroll listener synchronization (both passive window scroll and Lenis if active)
   useEffect(() => {
     window.addEventListener("scroll", updateProgress, { passive: true });
-    window.addEventListener("resize", updateProgress);
-    window.addEventListener("resize", updateCanvasResolution);
+    window.addEventListener("resize", updateProgress, { passive: true });
+    window.addEventListener("resize", updateCanvasResolution, { passive: true });
 
     const lenis = getLenis();
     if (lenis) {
@@ -91,8 +91,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     return () => {
       window.removeEventListener("scroll", updateProgress);
       window.removeEventListener("resize", updateProgress);
-      window.removeEventListener("resize", updateCanvasResolution);
-      if (lenis) {
+      window.removeEventListener("resize", updateCanvasResolution);      if (lenis) {
         lenis.off("scroll", updateProgress);
       }
     };
@@ -178,10 +177,17 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   }, [drawFramePair]);
 
   // requestAnimationFrame scroll-driven continuous canvas rendering loop
+  // Paused when intro section is off-screen to save GPU/CPU on the rest of the page
   useEffect(() => {
     let rafId: number;
+    let isVisible = true;
 
     const render = () => {
+      if (!isVisible) {
+        rafId = 0;
+        return;
+      }
+
       // Map 0.0 to 0.85 to frames 0 to 119; 0.85 to 1.0 holds frame 119 (final frame)
       const normalized = Math.min(targetProgressRef.current / 0.85, 1);
       const targetFrame = Math.min(Math.floor(normalized * TOTAL_FRAMES), TOTAL_FRAMES - 1);
@@ -205,10 +211,28 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       rafId = requestAnimationFrame(render);
     };
 
+    // Pause the RAF loop when the intro is scrolled completely off-screen
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const nowVisible = entry ? entry.isIntersecting : true;
+        if (nowVisible && !isVisible) {
+          isVisible = true;
+          if (!rafId) rafId = requestAnimationFrame(render);
+        } else if (!nowVisible) {
+          isVisible = false;
+        }
+      },
+      { threshold: 0 },
+    );
+
+    const container = containerRef.current;
+    if (container) io.observe(container);
+
     rafId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(rafId);
+      io.disconnect();
     };
   }, [drawFramePair]);
 

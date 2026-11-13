@@ -33,16 +33,18 @@ export function SmoothScroll() {
       import("lenis")
         .then(({ default: Lenis }) => {
           if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) return;
+          // Use slightly snappier settings on mobile to reduce perceived lag
+          const isMobile = window.innerWidth < 768;
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            duration: 0.9,
+            duration: isMobile ? 0.75 : 0.9,
             easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
             orientation: "vertical",
             gestureOrientation: "vertical",
             smoothWheel: true,
             wheelMultiplier: 1.15,
-            touchMultiplier: 1.5,
+            touchMultiplier: isMobile ? 1.0 : 1.5,
             infinite: false,
           });
 

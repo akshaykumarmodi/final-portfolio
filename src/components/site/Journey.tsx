@@ -121,7 +121,7 @@ export function Journey() {
             {/* Traveling Light Pulse Comet along the timeline path */}
             {!reducedMotion && (
               <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-32 rounded-full animate-[timeline-flow_7s_linear_infinite]"
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-32 rounded-full animate-[timeline-flow_7s_linear_infinite] will-change-transform"
                 style={{
                   background:
                     "linear-gradient(180deg, transparent, rgba(6,182,212,0.9), rgba(168,85,247,0.9), transparent)",
@@ -140,7 +140,7 @@ export function Journey() {
             <div className="h-full w-full bg-gradient-to-b from-cyan-400/30 via-purple-500/40 to-cyan-400/20" />
             {!reducedMotion && (
               <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-28 rounded-full animate-[timeline-flow_6s_linear_infinite]"
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-28 rounded-full animate-[timeline-flow_6s_linear_infinite] will-change-transform"
                 style={{
                   background:
                     "linear-gradient(180deg, transparent, rgba(6,182,212,0.9), rgba(168,85,247,0.9), transparent)",

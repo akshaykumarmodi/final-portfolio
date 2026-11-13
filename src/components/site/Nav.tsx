@@ -336,6 +336,17 @@ export function Nav() {
                   <span className="font-mono text-xs text-muted-foreground">0{i + 1}</span>
                 </button>
               ))}
+              <div className="pt-2 mt-1 border-t border-purple-500/15 flex items-center justify-between px-4 py-2 select-none">
+                <span className="text-sm font-medium text-slate-300">Background Audio</span>
+                <button
+                  type="button"
+                  onClick={() => toggle()}
+                  className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium bg-purple-500/20 border border-purple-400/40 text-purple-200 hover:bg-purple-500/30 active:scale-95 transition-all"
+                >
+                  <span>Sound {enabled ? "On" : "Off"}</span>
+                  <SoundWaves on={enabled} />
+                </button>
+              </div>
             </div>
           </motion.nav>
         )}

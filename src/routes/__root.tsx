@@ -123,14 +123,24 @@ function RootShell({ children }: { children: ReactNode }) {
       <body>
         <audio
           id="akm-bg-audio"
-          src="/audio/peaceful-piano-ambient.mp3"
           autoPlay
           loop
           playsInline
+          webkit-playsinline="true"
           preload="auto"
           aria-hidden="true"
-          className="sr-only"
+          style={{
+            position: "fixed",
+            bottom: "0px",
+            right: "0px",
+            width: "1px",
+            height: "1px",
+            opacity: 0.01,
+            pointerEvents: "none",
+            zIndex: -1,
+          }}
         >
+          <source src="/audio/peaceful-piano-ambient.m4a" type="audio/mp4" />
           <source src="/audio/peaceful-piano-ambient.mp3" type="audio/mpeg" />
           <source src="/audio/peaceful-piano.mp3" type="audio/mpeg" />
           <source src="/audio/cinematic-ambient.mp3" type="audio/mpeg" />
@@ -149,32 +159,46 @@ function RootShell({ children }: { children: ReactNode }) {
                     }
                   } catch(e){}
 
-                  a.volume = 0.75;
-                  a.muted = false;
-
-                  var AC = window.AudioContext || window.webkitAudioContext;
-                  var actx = null;
                   try {
-                    if (AC) {
-                      actx = window.__akm_actx = window.__akm_actx || new AC();
-                      if (actx.state === 'suspended') {
-                        actx.resume().catch(function() {});
-                      }
+                    if ('audioSession' in navigator) {
+                      navigator.audioSession.type = 'playback';
                     }
                   } catch(e){}
+
+                  try { a.volume = 0.75; } catch(e){}
+                  a.muted = false;
+
+                  var actx = null;
+                  function primeAudioHardware() {
+                    try {
+                      if ('audioSession' in navigator) {
+                        navigator.audioSession.type = 'playback';
+                      }
+                    } catch(e){}
+                    try {
+                      var AC = window.AudioContext || window.webkitAudioContext;
+                      if (AC) {
+                        actx = window.__akm_actx = window.__akm_actx || new AC();
+                        if (actx.state === 'suspended') {
+                          actx.resume().catch(function() {});
+                        }
+                        var buf = actx.createBuffer(1, 1, 22050);
+                        var src = actx.createBufferSource();
+                        src.buffer = buf;
+                        src.connect(actx.destination);
+                        src.start(0);
+                      }
+                    } catch(e){}
+                  }
 
                   var isPlaying = false;
 
                   function startSound() {
                     if (!a || isPlaying) return;
-                    try {
-                      if (actx && actx.state === 'suspended') {
-                        actx.resume().catch(function() {});
-                      }
-                    } catch(e){}
+                    primeAudioHardware();
 
                     a.muted = false;
-                    a.volume = 0.75;
+                    try { a.volume = 0.75; } catch(e){}
 
                     var p = a.play();
                     if (p !== undefined && typeof p.then === 'function') {
@@ -182,7 +206,7 @@ function RootShell({ children }: { children: ReactNode }) {
                         isPlaying = true;
                         removeListeners();
                       }).catch(function() {
-                        // Autoplay policy waiting for user gesture; keep listeners active
+                        // Autoplay policy waiting for user gesture on mobile
                       });
                     } else if (!a.paused) {
                       isPlaying = true;
@@ -198,36 +222,28 @@ function RootShell({ children }: { children: ReactNode }) {
                   window.addEventListener('load', startSound, { once: true });
                   window.addEventListener('pageshow', startSound, { once: true });
 
-                  // 3. User interaction triggers: any natural touch, gesture, or keypress starts sound without clicking a button
+                  // 3. User interaction triggers for mobile touch, tap, click, key
                   var gestureEvents = [
-                    'touchstart',
                     'touchend',
-                    'pointerdown',
                     'pointerup',
-                    'mousedown',
-                    'mouseup',
+                    'click',
+                    'touchstart',
+                    'pointerdown',
                     'keydown',
-                    'keyup',
-                    'click'
+                    'keyup'
                   ];
 
                   function onGesture() {
                     startSound();
                   }
 
-                  function onScroll() {
-                    if (!isPlaying) {
-                      startSound();
-                    }
-                  }
-
                   function removeListeners() {
                     gestureEvents.forEach(function(ev) {
                       window.removeEventListener(ev, onGesture, true);
                       document.removeEventListener(ev, onGesture, true);
-                    });
-                    ['wheel', 'touchmove', 'scroll'].forEach(function(ev) {
-                      window.removeEventListener(ev, onScroll, true);
+                      if (document.body) {
+                        document.body.removeEventListener(ev, onGesture, true);
+                      }
                     });
                   }
 
@@ -236,9 +252,19 @@ function RootShell({ children }: { children: ReactNode }) {
                     document.addEventListener(ev, onGesture, { capture: true, passive: true });
                   });
 
-                  ['wheel', 'touchmove', 'scroll'].forEach(function(ev) {
-                    window.addEventListener(ev, onScroll, { capture: true, passive: true });
-                  });
+                  if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                      if (document.body) {
+                        gestureEvents.forEach(function(ev) {
+                          document.body.addEventListener(ev, onGesture, { capture: true, passive: true });
+                        });
+                      }
+                    }, { once: true });
+                  } else if (document.body) {
+                    gestureEvents.forEach(function(ev) {
+                      document.body.addEventListener(ev, onGesture, { capture: true, passive: true });
+                    });
+                  }
                 } catch(e){}
               })();
             `,

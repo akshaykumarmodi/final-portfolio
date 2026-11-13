@@ -154,7 +154,16 @@ function RootShell({ children }: { children: ReactNode }) {
                   if (p !== undefined) {
                     p.catch(function() {
                       // Autoplay restriction: wait for visitor's very first interaction
-                      var events = ['pointerdown', 'touchstart', 'mousedown', 'keydown'];
+                      var events = [
+                        'pointerdown',
+                        'pointerup',
+                        'touchstart',
+                        'touchend',
+                        'mousedown',
+                        'mouseup',
+                        'click',
+                        'keydown'
+                      ];
                       function onFirstGesture() {
                         events.forEach(function(ev) {
                           window.removeEventListener(ev, onFirstGesture, true);

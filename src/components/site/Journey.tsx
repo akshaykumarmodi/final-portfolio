@@ -47,7 +47,7 @@ export function Journey() {
   return (
     <section
       id="journey"
-      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-20 sm:py-24 text-foreground scroll-mt-0"
+      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-20 sm:py-24 text-foreground bg-[#0b0816] scroll-mt-0"
     >
       {/* ----------------------------------------------------------------- */}
       {/* Background world: continuous with Hero, About & Projects universe */}
@@ -79,9 +79,9 @@ export function Journey() {
         {/* SECTION HEADER: Badge, Title & Visual Path Narrative          */}
         {/* ============================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 22 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
+          viewport={{ once: true, margin: "100px 0px 50px 0px" }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-3xl mx-auto pb-12 sm:pb-16"
         >
@@ -97,8 +97,8 @@ export function Journey() {
           </h2>
 
           {/* Subtitle */}
-          <p className="mt-3 font-sans text-xs sm:text-sm tracking-[0.32em] text-cyan-300/80 uppercase font-medium">
-            START → LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
+          <p className="mt-3 font-sans text-[0.65rem] sm:text-xs md:text-sm tracking-[0.2em] sm:tracking-[0.32em] text-cyan-300/80 uppercase font-medium max-w-full">
+            LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
           </p>
 
           <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
@@ -160,9 +160,9 @@ export function Journey() {
               return (
                 <motion.div
                   key={milestone.id}
-                  initial={{ opacity: 0, y: 28 }}
+                  initial={reducedMotion ? false : { opacity: 0, y: 28 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
+                  viewport={{ once: true, margin: "100px 0px 50px 0px" }}
                   transition={{ duration: 0.7, delay: 0.08 * (idx % 3) }}
                   onMouseEnter={() => {
                     play("hover");
@@ -178,7 +178,7 @@ export function Journey() {
                     <motion.div
                       whileHover={{ scale: 1.015, y: -3 }}
                       transition={{ duration: 0.25 }}
-                      className={`relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-7 backdrop-blur-2xl transition-all duration-300 ${
+                      className={`relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-7 backdrop-blur-none sm:backdrop-blur-2xl transition-all duration-300 ${
                         isSelected || milestone.highlighted
                           ? "border-primary-glow/70 shadow-[0_0_35px_rgba(168,85,247,0.35)]"
                           : "hover:border-cyan-400/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)]"
@@ -193,6 +193,7 @@ export function Journey() {
                         <div
                           aria-hidden
                           className="pointer-events-none absolute -inset-[1.5px] rounded-[25px] overflow-hidden opacity-60"
+                          style={{ contain: "paint" }}
                         >
                           <div
                             className="absolute -inset-[100%] animate-[border-beam-spin_9s_linear_infinite]"

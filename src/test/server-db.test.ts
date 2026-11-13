@@ -52,8 +52,8 @@ describe("Backend Database & Auth System", () => {
 
   it("loads journey milestones and supports full milestone CRUD", async () => {
     const milestones = await db.getJourney();
-    expect(milestones.length).toBeGreaterThanOrEqual(7);
-    expect(milestones[0]?.stage).toBe("start");
+    expect(milestones.length).toBeGreaterThanOrEqual(6);
+    expect(milestones[0]?.id).toBe("m-02-learning");
 
     const newMilestone = await db.addMilestone({
       title: "AI Hackathon Finalist",

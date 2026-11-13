@@ -3,16 +3,58 @@
 //   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
 //     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
-// Never set ssr.external or resolve.external: the Worker has no runtime module resolution, so
-// the build fails. Never add compression (compressPublicAssets, vite-plugin-compression):
-// hosting already compresses at the edge.
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+
+function serveUploadsPlugin() {
+  return {
+    name: "serve-uploads-plugin",
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url && req.url.startsWith("/uploads/")) {
+          const cleanUrl = req.url.split("?")[0];
+          const filename = path.basename(cleanUrl);
+
+          const candidates = [
+            path.join(process.cwd(), "public", "uploads", filename),
+            path.join(process.cwd(), "data", "uploads", filename),
+            path.join(os.tmpdir(), "akm-portfolio-data", "uploads", filename),
+            path.join(process.cwd(), "src", "assets", filename),
+          ];
+
+          for (const filePath of candidates) {
+            try {
+              if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                const ext = path.extname(filePath).toLowerCase();
+                const mimeMap: Record<string, string> = {
+                  ".png": "image/png",
+                  ".jpg": "image/jpeg",
+                  ".jpeg": "image/jpeg",
+                  ".webp": "image/webp",
+                  ".gif": "image/gif",
+                  ".svg": "image/svg+xml",
+                };
+                res.setHeader("Content-Type", mimeMap[ext] || "application/octet-stream");
+                res.setHeader("Cache-Control", "no-cache");
+                fs.createReadStream(filePath).pipe(res);
+                return;
+              }
+            } catch {}
+          }
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  vite: {
+    plugins: [serveUploadsPlugin()],
   },
 });

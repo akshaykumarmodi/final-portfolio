@@ -60,33 +60,36 @@ export function resolveProjectImage(
     return trimmed;
   }
 
-  // 3. Known uploaded filename matches or bundled asset references
+  // 3. Exact legacy asset paths or known initial baseline references
   if (
-    trimmed.includes("proj-1794321858226") ||
-    trimmed.includes("project-trustmesh")
+    trimmed === "/src/assets/project-trustmesh.webp" ||
+    trimmed === "/src/assets/project-trustmesh.png" ||
+    trimmed === "/assets/project-trustmesh.webp" ||
+    trimmed === "/uploads/proj-1794321858226-5fb03d1e.png"
   ) {
     return trustmeshImg;
   }
-  if (trimmed.includes("project-ai-tutor")) {
+  if (
+    trimmed === "/src/assets/project-ai-tutor.webp" ||
+    trimmed === "/assets/project-ai-tutor.webp"
+  ) {
     return aiTutorImg;
   }
   if (
-    trimmed.includes("proj-1794321984945") ||
-    trimmed.includes("project-spotify") ||
-    trimmed.includes("spotify")
+    trimmed === "/src/assets/project-spotify.png" ||
+    trimmed === "/uploads/proj-1794321984945-8788fc47.png"
   ) {
     return spotifyImg;
   }
-  if (trimmed.includes("project-portfolio")) {
+  if (
+    trimmed === "/src/assets/project-portfolio.webp" ||
+    trimmed === "/assets/project-portfolio.webp"
+  ) {
     return portfolioImg;
   }
 
-  // 4. Any other public /uploads/ or absolute paths
-  if (trimmed.startsWith("/")) {
-    return trimmed;
-  }
-
-  return trimmed || getDefaultProjectImage(slugOrTitle);
+  // 4. Any other custom URL or path (e.g. newly uploaded /uploads/..., data:, custom URL)
+  return trimmed;
 }
 
 /** All portfolio projects live here, bundled with the site (local baseline). */

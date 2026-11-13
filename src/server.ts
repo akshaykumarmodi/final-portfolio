@@ -18,6 +18,51 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+// Serve uploaded files dynamically from disk if requested
+async function handleStaticUpload(pathname: string): Promise<Response | null> {
+  if (!pathname.startsWith("/uploads/")) return null;
+  try {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const filename = path.basename(pathname);
+
+    const candidates = [
+      path.join(process.cwd(), "public", "uploads", filename),
+      path.join(process.cwd(), "data", "uploads", filename),
+      path.join(os.tmpdir(), "akm-portfolio-data", "uploads", filename),
+      path.join(process.cwd(), ".output", "public", "uploads", filename),
+      path.join(process.cwd(), "src", "assets", filename),
+    ];
+
+    for (const filePath of candidates) {
+      if (fs.existsSync(filePath)) {
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeMap: Record<string, string> = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+            ".svg": "image/svg+xml",
+          };
+          const buffer = fs.readFileSync(filePath);
+          return new Response(buffer, {
+            status: 200,
+            headers: {
+              "content-type": mimeMap[ext] || "application/octet-stream",
+              "cache-control": "public, max-age=86400",
+            },
+          });
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
@@ -50,6 +95,10 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      const staticUpload = await handleStaticUpload(url.pathname);
+      if (staticUpload) return staticUpload;
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

@@ -227,6 +227,7 @@ function ProjectCard({
         {/* Project Thumbnail Image with Category Badge */}
         <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-white/10 bg-[#120d24] group">
           <img
+            key={project.image}
             src={resolveProjectImage(project.image, project.slug || project.title)}
             alt={project.title}
             className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -626,7 +627,7 @@ export function Projects() {
 
               return (
                 <ProjectCard
-                  key={pKey}
+                  key={`${pKey}-${p.image}`}
                   project={p}
                   isActive={idx === activeIndex}
                   position={pos}

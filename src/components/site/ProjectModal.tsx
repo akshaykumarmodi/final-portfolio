@@ -85,6 +85,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           {/* Project Cover Image */}
           <div className="relative mt-6 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#120d24] shadow-2xl">
             <img
+              key={project.image}
               src={resolveProjectImage(project.image, project.slug || project.title)}
               alt={project.title}
               className="size-full object-cover select-none"

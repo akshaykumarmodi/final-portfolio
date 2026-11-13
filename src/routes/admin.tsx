@@ -741,6 +741,7 @@ function AdminPage() {
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <img
+                      key={p.image}
                       src={resolveProjectImage(p.image, p.slug || p.title)}
                       alt={p.title}
                       className="size-16 rounded-xl object-cover border border-white/10 shrink-0 bg-black/40"

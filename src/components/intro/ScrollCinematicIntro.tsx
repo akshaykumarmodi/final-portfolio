@@ -116,12 +116,15 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       }
     }
 
-    // 2. Blurred Ambient Background Canvas (960x540 for lightweight GPU performance)
-    const bgCanvas = bgCanvasRef.current;
-    if (bgCanvas) {
-      const bgCtx = bgCanvas.getContext("2d", { alpha: false });
-      if (bgCtx) {
-        bgCtx.drawImage(img, 0, 0, 960, 540);
+    // 2. Blurred Ambient Background Canvas (Desktop only: on mobile, omitting saves 50% GPU fill rate)
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (!isMobile) {
+      const bgCanvas = bgCanvasRef.current;
+      if (bgCanvas) {
+        const bgCtx = bgCanvas.getContext("2d", { alpha: false });
+        if (bgCtx) {
+          bgCtx.drawImage(img, 0, 0, 960, 540);
+        }
       }
     }
 
@@ -204,11 +207,17 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     };
   }, [drawFramePair]);
 
-  // requestAnimationFrame scroll-driven continuous canvas rendering loop
+  // requestAnimationFrame scroll-driven continuous canvas rendering loop with viewport auto-pause
   useEffect(() => {
-    let rafId: number;
+    let rafId = 0;
+    let isIntroVisible = true;
 
     const render = () => {
+      if (!isIntroVisible) {
+        rafId = 0;
+        return;
+      }
+
       // Map 0.0 to 0.85 to frames 0 to 119; 0.85 to 1.0 holds frame 119 (final frame)
       const normalized = Math.min(targetProgressRef.current / 0.85, 1);
       const targetFrame = Math.min(Math.floor(normalized * TOTAL_FRAMES), TOTAL_FRAMES - 1);
@@ -232,10 +241,31 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       rafId = requestAnimationFrame(render);
     };
 
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Pause canvas rendering loop completely when user scrolls past intro
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const visible = entry ? entry.isIntersecting : true;
+        if (visible && !isIntroVisible) {
+          isIntroVisible = true;
+          rafId = requestAnimationFrame(render);
+        } else if (!visible && isIntroVisible) {
+          isIntroVisible = false;
+          cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+      },
+      { threshold: 0.01 }
+    );
+    io.observe(container);
+
     rafId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(rafId);
+      io.disconnect();
     };
   }, [drawFramePair]);
 
@@ -251,10 +281,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       {/* Sticky Fullscreen Cinematic Viewport */}
       <div className="sticky top-0 h-[100svh] w-full flex items-center justify-center overflow-hidden bg-[#070510] select-none">
         
-        {/* BACKGROUND LAYER: Current frame enlarged, soft cinematic blur, darkened & reduced opacity */}
+        {/* BACKGROUND LAYER: Current frame enlarged, soft cinematic blur, darkened & reduced opacity (Desktop only) */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none"
+          className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none hidden md:block"
         >
           <canvas
             ref={bgCanvasRef}

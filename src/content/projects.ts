@@ -1,6 +1,6 @@
-import trustmeshImg from "@/assets/project-trustmesh.png";
+import trustmeshImg from "@/assets/project-trustmesh.webp";
 import aiTutorImg from "@/assets/project-ai-tutor.webp";
-import spotifyImg from "@/assets/project-spotify.png";
+import spotifyImg from "@/assets/project-spotify.webp";
 import portfolioImg from "@/assets/project-portfolio.webp";
 
 export { trustmeshImg, aiTutorImg, spotifyImg, portfolioImg };

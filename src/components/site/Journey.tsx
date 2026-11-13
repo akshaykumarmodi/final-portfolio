@@ -178,7 +178,7 @@ export function Journey() {
                     <motion.div
                       whileHover={{ scale: 1.015, y: -3 }}
                       transition={{ duration: 0.25 }}
-                      className={`relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-7 backdrop-blur-2xl transition-all duration-300 ${
+                      className={`relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-7 backdrop-blur-none sm:backdrop-blur-2xl transition-all duration-300 ${
                         isSelected || milestone.highlighted
                           ? "border-primary-glow/70 shadow-[0_0_35px_rgba(168,85,247,0.35)]"
                           : "hover:border-cyan-400/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)]"

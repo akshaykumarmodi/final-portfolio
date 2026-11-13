@@ -31,7 +31,7 @@ function HtmlIcon({ className = "size-7" }: { className?: string }) {
       src={htmlShieldImg}
       alt="HTML"
       className={`${className} object-contain`}
-      loading="eager"
+      loading="lazy"
       decoding="async"
     />
   );
@@ -43,7 +43,7 @@ function CssIcon({ className = "size-7" }: { className?: string }) {
       src={cssShieldImg}
       alt="CSS"
       className={`${className} object-contain`}
-      loading="eager"
+      loading="lazy"
       decoding="async"
     />
   );
@@ -96,7 +96,7 @@ function JsIcon({ className = "size-7" }: { className?: string }) {
       src={jsShieldImg}
       alt="JavaScript"
       className={`${className} object-contain`}
-      loading="eager"
+      loading="lazy"
       decoding="async"
     />
   );

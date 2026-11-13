@@ -205,8 +205,14 @@ export function HeroFog() {
   const [useFallback, setUseFallback] = useState(false);
 
   useEffect(() => {
-    // On mobile devices or when WebGL is unsupported, use the lightweight CSS atmospheric fog
-    if (isMobile || !hasWebGL() || (typeof window !== "undefined" && window.innerWidth < 768)) {
+    // On mobile/touch devices or when WebGL is unsupported, use the ultra-fast CSS atmospheric fog
+    const isTouchOrMobile =
+      isMobile ||
+      !hasWebGL() ||
+      (typeof window !== "undefined" &&
+        (window.innerWidth < 1024 || window.matchMedia("(pointer: coarse)").matches));
+
+    if (isTouchOrMobile) {
       setUseFallback(true);
       return;
     }

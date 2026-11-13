@@ -1,4 +1,4 @@
-import { Component, ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import { Component, ReactNode, Suspense, lazy, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, Send } from "lucide-react";
 import heroBg from "@/assets/hero-bg.webp";
@@ -9,7 +9,8 @@ import { hasWebGL, prefersReducedMotion, scrollToSection } from "@/lib/scroll";
 import { PORTRAIT_ASPECT, PORTRAIT_BOTTOM, PORTRAIT_MAX_H, PORTRAIT_MAX_W, PORTRAIT_X } from "@/components/three/layout";
 import { cn } from "@/lib/utils";
 import { HeroFog } from "./HeroFog";
-import HeroScene from "@/components/three/HeroScene";
+
+const HeroScene = lazy(() => import("@/components/three/HeroScene"));
 
 class SafeHeroScene extends Component<{ children: ReactNode }, { hasError: boolean }> {
   override state = { hasError: false };

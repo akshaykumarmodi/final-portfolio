@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { sound } from "@/lib/sound";
+import { useSound } from "@/hooks/use-sound";
+import { SoundWaves } from "@/components/site/Nav";
 import { scrollToSection, getLenis } from "@/lib/scroll";
 import { Logo } from "@/components/site/Logo";
 
@@ -28,6 +30,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isNearEnd, setIsNearEnd] = useState(false);
+  const { enabled, toggle } = useSound();
 
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
@@ -215,10 +218,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       id="intro"
       ref={containerRef}
       onClick={() => {
-        if (!sound.isPlaying) void sound.turnOn();
+        sound.unlock?.();
       }}
       onPointerDown={() => {
-        if (!sound.isPlaying) void sound.turnOn();
+        sound.unlock?.();
       }}
       className="relative w-full h-[350vh] bg-[#070510] noise-overlay"
       aria-label="Cinematic Interactive Intro"
@@ -314,12 +317,29 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
             <Logo className="text-xl sm:text-[1.85rem] drop-shadow-[0_0_15px_rgba(192,132,252,0.85)] filter brightness-110" />
           </button>
 
-          {/* Top-Right: Skip Intro */}
+          {/* Top-Right: Sound toggle and Skip Intro */}
           <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              aria-pressed={enabled}
+              aria-label={enabled ? "Turn sound off" : "Turn sound on"}
+              className="glass-pill glow-border group inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              <span className="hidden xs:inline">Sound {enabled ? "On" : "Off"}</span>
+              <SoundWaves on={enabled} />
+            </button>
+
             <button
               onClick={handleEnterPortfolio}
               aria-label="Skip Intro"
-              className="group inline-flex items-center gap-2 rounded-full px-4 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95"
+              className="group inline-flex items-center gap-2 rounded-full px-4 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
             >
               <span className="tracking-wide">Skip Intro</span>
               <span className="text-purple-400 text-xs sm:text-sm transition-transform duration-300 group-hover:translate-x-0.5">

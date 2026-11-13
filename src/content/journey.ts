@@ -29,10 +29,28 @@ export type JourneyMilestone = {
 
 /**
  * Authentic baseline milestones for Akshay Kumar Modi's journey.
- * Structured to represent: LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
+ * Structured to represent: START → LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
  * Fully editable and persistable through the Admin Dashboard.
  */
 export const JOURNEY_MILESTONES: JourneyMilestone[] = [
+  {
+    id: "m-01-start",
+    slug: "the-beginning",
+    stage: "start",
+    title: "The Genesis & Curiosity",
+    subtitle: "Newton School of Technology, Rishihood University",
+    description:
+      "Commenced B.Tech in Computer Science & Artificial Intelligence. Built first algorithmic foundations and discovered the passion for turning logical code into creative digital experiences.",
+    year: "2024",
+    dateRange: "Aug 2024",
+    category: "Genesis",
+    iconName: "Compass",
+    status: "completed",
+    highlighted: false,
+    published: true,
+    sortOrder: 1,
+    tags: ["Algorithms", "Python", "Computer Science"],
+  },
   {
     id: "m-02-learning",
     slug: "foundations-mastery",
@@ -48,9 +66,8 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     status: "completed",
     highlighted: false,
     published: true,
-    sortOrder: 1,
+    sortOrder: 2,
     tags: ["React", "TypeScript", "WebGL", "FastAPI"],
-    imageUrl: "/assets/milestones/m2-learning.svg",
   },
   {
     id: "m-03-building",
@@ -65,11 +82,10 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     category: "Creative Tech",
     iconName: "Sparkles",
     status: "completed",
-    highlighted: false,
+    highlighted: true,
     published: true,
-    sortOrder: 2,
+    sortOrder: 3,
     tags: ["Three.js", "Shaders", "Framer Motion", "Web Audio"],
-    imageUrl: "/assets/milestones/m3-building.svg",
   },
   {
     id: "m-04-hackathons",
@@ -79,16 +95,15 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     subtitle: "Rapid Prototyping & Innovation",
     description:
       "Collaborated in intensive 24-48 hour hackathons, shipping functional AI prototypes, solving developer reputation challenges, and demoing live to developer and open-source communities.",
-    year: "2026",
-    dateRange: "Mid 2026",
+    year: "2025",
+    dateRange: "Mid 2025",
     category: "Competitions",
     iconName: "Trophy",
-    status: "in-progress",
-    highlighted: false,
+    status: "completed",
+    highlighted: true,
     published: true,
-    sortOrder: 3,
+    sortOrder: 4,
     tags: ["Hackathons", "Rapid Shipping", "Team Leadership"],
-    imageUrl: "/assets/milestones/m4-hackathons.svg",
   },
   {
     id: "m-05-projects",
@@ -98,16 +113,15 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     subtitle: "TrustMesh & Study Tutor AI",
     description:
       "Shipped TrustMesh (an open-source contributor reputation network against AI slop) and Study Tutor AI (an adaptive interactive educational learning assistant) for active users.",
-    year: "2026",
-    dateRange: "2026",
+    year: "2025",
+    dateRange: "Late 2025",
     category: "Products & Open Source",
     iconName: "Rocket",
     status: "completed",
-    highlighted: false,
+    highlighted: true,
     published: true,
-    sortOrder: 4,
+    sortOrder: 5,
     tags: ["TrustMesh", "Study Tutor AI", "Open Source"],
-    imageUrl: "/assets/milestones/m5-projects.svg",
   },
   {
     id: "m-06-growth",
@@ -122,11 +136,10 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     category: "Evolution",
     iconName: "TrendingUp",
     status: "in-progress",
-    highlighted: false,
+    highlighted: true,
     published: true,
-    sortOrder: 5,
+    sortOrder: 6,
     tags: ["Autonomous Agents", "Performance", "Full-Stack"],
-    imageUrl: "/assets/milestones/m6-growth.svg",
   },
   {
     id: "m-07-future",
@@ -143,8 +156,8 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     status: "upcoming",
     highlighted: false,
     published: true,
-    sortOrder: 6,
+    sortOrder: 7,
     tags: ["Future Vision", "Global Impact", "AI Frontier"],
-    imageUrl: "/assets/milestones/m7-future.svg",
   },
 ];
+

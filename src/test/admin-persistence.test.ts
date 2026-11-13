@@ -147,5 +147,35 @@ describe("Admin & Content Persistence Engine", () => {
       expect(refreshedResult.current.allMilestones.length).toBe(initialCount + 1);
       expect(refreshedResult.current.allMilestones.some((m) => m.title === "NASA Space Apps Global Winner")).toBe(true);
     });
+
+    it("discards legacy stale cached milestones and renders authentic 5 milestones starting with Pursuing B.Tech", async () => {
+      // Simulate mobile device that previously stored stale m-02 milestone
+      localStorage.setItem(
+        "akm_portfolio_journey",
+        JSON.stringify([
+          { id: "m-02-learning", title: "Mastering the Modern Stack", stage: "learning", published: true, sortOrder: 1 },
+          { id: "m-03-building", title: "Creative Engineering", stage: "building", published: true, sortOrder: 2 },
+        ]),
+      );
+      localStorage.setItem("akm_journey_customized", "true");
+
+      const { result } = renderHook(() => useJourney());
+      expect(result.current.allMilestones.length).toBe(5);
+      expect(result.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
+      expect(result.current.allMilestones[0]?.id).toBe("m-01-start");
+
+      // Verify that the stale legacy cache was purged
+      expect(localStorage.getItem("akm_journey_customized")).toBeNull();
+    });
+
+    it("ensures mobile visitors without local customization always render authentic 5 milestones", async () => {
+      localStorage.removeItem("akm_portfolio_journey");
+      localStorage.removeItem("akm_journey_customized");
+
+      const { result } = renderHook(() => useJourney());
+      expect(result.current.allMilestones.length).toBe(5);
+      expect(result.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
+      expect(result.current.allMilestones[4]?.title).toBe("Shipping Real-World Systems");
+    });
   });
 });

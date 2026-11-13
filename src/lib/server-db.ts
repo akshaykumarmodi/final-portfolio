@@ -191,7 +191,7 @@ async function persistDb() {
   if (typeof window !== "undefined") return;
 
   try {
-    const { fs } = await getNodeModules();
+    const { fs, path } = await getNodeModules();
     const { baseDir, dbPath } = await getDataPaths();
 
     if (!fs.existsSync(baseDir)) {
@@ -210,6 +210,24 @@ async function persistDb() {
       // If rename fails across partitions/tmp mounts, fallback to copy + delete
       fs.copyFileSync(tmpPath, dbPath);
       try { fs.unlinkSync(tmpPath); } catch {}
+    }
+
+    // Sync memoryDb.journey back to src/content/journey.ts if running in local environment
+    try {
+      const journeyFilePath = path.join(process.cwd(), "src", "content", "journey.ts");
+      if (fs.existsSync(journeyFilePath) && Array.isArray(memoryDb.journey) && memoryDb.journey.length > 0) {
+        const currentContent = fs.readFileSync(journeyFilePath, "utf8");
+        const marker = "export const JOURNEY_MILESTONES: JourneyMilestone[] = ";
+        const idx = currentContent.indexOf(marker);
+        if (idx !== -1) {
+          const header = currentContent.substring(0, idx + marker.length);
+          const formatted = JSON.stringify(memoryDb.journey, null, 2);
+          const newContent = `${header}${formatted};\n`;
+          fs.writeFileSync(journeyFilePath, newContent, "utf8");
+        }
+      }
+    } catch (syncErr) {
+      console.warn("[server-db] Warning syncing journey to content file:", syncErr);
     }
   } catch (err) {
     console.warn("[server-db] Disk write fallback:", err);

@@ -17,6 +17,12 @@ function getCachedJourney(): JourneyMilestone[] | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      // Discard stale legacy cache that starts with old m-02 milestone
+      if (parsed[0]?.id === "m-02-learning") {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(CUSTOMIZED_KEY);
+        return null;
+      }
       return parsed;
     }
   } catch (e) {
@@ -40,8 +46,14 @@ function saveCachedJourney(milestonesList: JourneyMilestone[], isCustomized = tr
 
 export function useJourney() {
   const [milestones, setMilestones] = useState<JourneyMilestone[]>(() => {
-    const cached = getCachedJourney();
-    return cached && cached.length > 0 ? cached : JOURNEY_MILESTONES;
+    if (typeof window !== "undefined") {
+      const isCustomized = localStorage.getItem(CUSTOMIZED_KEY) === "true";
+      if (isCustomized) {
+        const cached = getCachedJourney();
+        if (cached && cached.length > 0) return cached;
+      }
+    }
+    return JOURNEY_MILESTONES;
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,14 +68,30 @@ export function useJourney() {
       setIsLoading(true);
       setError(null);
 
-      const isCustomizedLocally =
+      let serverData: JourneyMilestone[] | null = null;
+      try {
+        serverData = await fetchJourneyFn();
+      } catch {
+        // Fallback to /api/journey REST endpoint on edge/serverless environments
+        try {
+          if (typeof window !== "undefined") {
+            const res = await fetch("/api/journey");
+            if (res.ok) {
+              const json = await res.json();
+              if (Array.isArray(json) && json.length > 0) {
+                serverData = json;
+              }
+            }
+          }
+        } catch {}
+      }
+
+      const isCustomized =
         typeof window !== "undefined" &&
         localStorage.getItem(CUSTOMIZED_KEY) === "true";
 
-      const serverData = await fetchJourneyFn();
-
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        if (isCustomizedLocally) {
+        if (isCustomized) {
           const cached = getCachedJourney();
           if (cached && cached.length > 0) {
             // Retain user's custom milestones across page refreshes
@@ -78,21 +106,26 @@ export function useJourney() {
           }
         }
         setMilestones(serverData);
-        saveCachedJourney(serverData, false);
       } else {
-        const cached = getCachedJourney();
-        if (cached && cached.length > 0) {
-          setMilestones(cached);
-        } else {
-          setMilestones(JOURNEY_MILESTONES);
-          saveCachedJourney(JOURNEY_MILESTONES, false);
+        if (isCustomized) {
+          const cached = getCachedJourney();
+          if (cached && cached.length > 0) {
+            setMilestones(cached);
+            return;
+          }
         }
+        setMilestones(JOURNEY_MILESTONES);
       }
     } catch (err) {
       console.warn("[Journey] Server load notice, keeping active cached data:", err);
-      const cached = getCachedJourney();
-      if (cached && cached.length > 0) {
-        setMilestones(cached);
+      const isCustomized =
+        typeof window !== "undefined" &&
+        localStorage.getItem(CUSTOMIZED_KEY) === "true";
+      if (isCustomized) {
+        const cached = getCachedJourney();
+        if (cached && cached.length > 0) {
+          setMilestones(cached);
+        }
       }
     } finally {
       setIsLoading(false);

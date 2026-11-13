@@ -13,6 +13,21 @@ function serveUploadsPlugin() {
     name: "serve-uploads-plugin",
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url && (req.url === "/api/journey" || req.url.startsWith("/api/journey?"))) {
+          try {
+            const dbPath = path.join(process.cwd(), "data", "portfolio-db.json");
+            if (fs.existsSync(dbPath)) {
+              const parsed = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+              if (parsed.journey && Array.isArray(parsed.journey)) {
+                res.setHeader("Content-Type", "application/json");
+                res.setHeader("Cache-Control", "no-cache");
+                res.end(JSON.stringify(parsed.journey.filter((m: any) => m.published !== false)));
+                return;
+              }
+            }
+          } catch {}
+        }
+
         if (req.url && req.url.startsWith("/uploads/")) {
           const cleanUrl = req.url.split("?")[0];
           const filename = path.basename(cleanUrl);

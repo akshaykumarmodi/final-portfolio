@@ -16,9 +16,9 @@ const SECTIONS = [
   { id: "contact", label: "Contact" },
 ] as const;
 
-function SoundWaves({ on }: { on: boolean }) {
+export function SoundWaves({ on }: { on: boolean }) {
   return (
-    <svg viewBox="0 0 20 20" className="size-4" aria-hidden>
+    <svg viewBox="0 0 20 20" className="size-4 shrink-0" aria-hidden>
       <circle cx="4" cy="10" r="1.6" fill="currentColor" />
       {[0, 1].map((i) => (
         <path
@@ -28,8 +28,8 @@ function SoundWaves({ on }: { on: boolean }) {
           stroke="currentColor"
           strokeWidth="1.6"
           strokeLinecap="round"
-          className={cn("origin-left transition-opacity duration-500", on ? "opacity-100" : "opacity-25")}
-          style={on ? { animation: `pulse 1.6s ${i * 0.25}s ease-in-out infinite` } : undefined}
+          className={cn("origin-left transition-opacity duration-300", on ? "opacity-100" : "opacity-30")}
+          style={on ? { animation: `pulse 1.4s ${i * 0.22}s ease-in-out infinite` } : undefined}
         />
       ))}
     </svg>
@@ -42,7 +42,7 @@ export function Nav() {
   const targetId = hoveredId || active;
 
   const [open, setOpen] = useState(false);
-  const { enabled, toggle, play } = useSound();
+  const { enabled, isPlaying, toggle, play } = useSound();
   const [isVisible, setIsVisible] = useState(true);
 
   const headerRef = useRef<HTMLElement>(null);
@@ -249,13 +249,20 @@ export function Nav() {
           {/* Right: Sound On/Off, Profile/Admin, Mobile Menu Toggle */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 justify-self-end">
             <button
-              onClick={toggle}
-              aria-pressed={enabled}
-              aria-label={enabled ? "Turn sound off" : "Turn sound on"}
-              className="glass-pill glow-border flex h-9 sm:h-10 md:h-11 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3.5 md:px-4 text-xs sm:text-sm md:text-[0.95rem] font-medium text-foreground transition-all duration-200 hover:scale-105 hover:border-primary-glow/60"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              aria-pressed={isPlaying}
+              aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
+              className="glass-pill glow-border flex h-9 sm:h-10 md:h-11 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3.5 md:px-4 text-xs sm:text-sm md:text-[0.95rem] font-medium text-foreground transition-all duration-200 hover:scale-105 hover:border-primary-glow/60 cursor-pointer"
             >
-              <span className="hidden sm:inline">Sound {enabled ? "On" : "Off"}</span>
-              <SoundWaves on={enabled} />
+              <span className="hidden sm:inline">Sound {isPlaying ? "On" : "Off"}</span>
+              <SoundWaves on={isPlaying} />
             </button>
 
             <Link

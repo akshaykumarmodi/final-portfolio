@@ -124,7 +124,6 @@ function RootShell({ children }: { children: ReactNode }) {
         <audio
           id="akm-bg-audio"
           src="/audio/peaceful-piano-ambient.mp3"
-          autoPlay
           loop
           playsInline
           preload="auto"
@@ -137,15 +136,46 @@ function RootShell({ children }: { children: ReactNode }) {
               (function() {
                 try {
                   var a = document.getElementById('akm-bg-audio');
-                  if (a && localStorage.getItem('akm-sound') !== 'off') {
+                  if (!a) return;
+
+                  a.volume = 0.75;
+                  a.muted = false;
+
+                  function tryPlay() {
+                    if (!a) return;
+                    a.muted = false;
                     a.volume = 0.75;
-                    var p = a.play();
-                    if (p !== undefined) {
-                      p.catch(function() {
-                        a.muted = true;
-                        a.play().catch(function(){});
-                      });
+                    if (a.paused && typeof a.play === 'function') {
+                      a.play().catch(function() {});
                     }
+                  }
+
+                  // 1. Direct unmuted autoplay on initial website entry
+                  var p = a.play();
+                  if (p !== undefined) {
+                    p.catch(function() {
+                      // 2. If browser autoplay policy holds back sound without interaction,
+                      // wake up and play on visitor's very first interaction on the page
+                      var events = [
+                        'pointerdown',
+                        'pointerup',
+                        'touchstart',
+                        'touchend',
+                        'mousedown',
+                        'mouseup',
+                        'click',
+                        'keydown'
+                      ];
+                      function onFirstGesture() {
+                        events.forEach(function(ev) {
+                          window.removeEventListener(ev, onFirstGesture, true);
+                        });
+                        tryPlay();
+                      }
+                      events.forEach(function(ev) {
+                        window.addEventListener(ev, onFirstGesture, { capture: true, once: true, passive: true });
+                      });
+                    });
                   }
                 } catch(e){}
               })();

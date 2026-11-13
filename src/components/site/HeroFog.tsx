@@ -218,13 +218,13 @@ export function HeroFog() {
       canvas.getContext("webgl2", {
         alpha: true,
         premultipliedAlpha: true,
-        preserveDrawingBuffer: false,
+        preserveDrawingBuffer: true,
         powerPreference: "high-performance",
       }) ||
       (canvas.getContext("webgl", {
         alpha: true,
         premultipliedAlpha: true,
-        preserveDrawingBuffer: false,
+        preserveDrawingBuffer: true,
       }) as WebGLRenderingContext | null);
 
     if (!gl) return;
@@ -294,8 +294,6 @@ export function HeroFog() {
 
     let rafId = 0;
     let isVisible = true;
-    let lastRenderTime = 0;
-    const FRAME_INTERVAL = 1000 / 60; // Smooth 60fps cap leaves GPU headroom for 120Hz/ProMotion scrolling
     const startTime = performance.now();
 
     // Bind program once — it never changes
@@ -307,12 +305,6 @@ export function HeroFog() {
         return;
       }
 
-      rafId = requestAnimationFrame(render);
-
-      const delta = now - lastRenderTime;
-      if (delta < FRAME_INTERVAL) return;
-      lastRenderTime = now - (delta % FRAME_INTERVAL);
-
       currentX += (targetX - currentX) * 0.04;
       currentY += (targetY - currentY) * 0.04;
 
@@ -323,6 +315,8 @@ export function HeroFog() {
 
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      rafId = requestAnimationFrame(render);
     };
 
     const updateSize = () => {

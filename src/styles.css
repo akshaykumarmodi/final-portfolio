@@ -167,8 +167,7 @@
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     background-color: #0b0816;
-    /* scroll-behavior managed by Lenis — native smooth would conflict and double-smooth */
-    scroll-behavior: auto;
+    scroll-behavior: smooth;
     overflow-x: clip;
   }
 

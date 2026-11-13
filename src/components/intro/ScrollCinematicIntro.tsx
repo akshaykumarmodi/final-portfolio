@@ -27,7 +27,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   const isIntroVisibleRef = useRef(true);
   const fgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const bgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const progressTickingRef = useRef(false);
 
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
   const loadedFlagsRef = useRef<boolean[]>(new Array(TOTAL_FRAMES).fill(false));
@@ -44,30 +43,24 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     scrollToSection("home");
   }, [onEnterPortfolio]);
 
-  // Compute scroll progress through the intro track
+  // Compute scroll progress through the intro track with 1:1 scroll sync
   const updateProgress = useCallback(() => {
-    // If the intro section is scrolled completely off-screen, skip DOM layout measurements
     if (!isIntroVisibleRef.current) return;
-    if (progressTickingRef.current) return;
 
-    progressTickingRef.current = true;
-    requestAnimationFrame(() => {
-      progressTickingRef.current = false;
-      const container = containerRef.current;
-      if (!container || !isIntroVisibleRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-      const rect = container.getBoundingClientRect();
-      const scrollable = container.offsetHeight - window.innerHeight;
-      if (scrollable <= 0) return;
+    const rect = container.getBoundingClientRect();
+    const scrollable = container.offsetHeight - window.innerHeight;
+    if (scrollable <= 0) return;
 
-      const raw = -rect.top / scrollable;
-      const progress = Math.min(Math.max(raw, 0), 1);
-      targetProgressRef.current = progress;
+    const raw = -rect.top / scrollable;
+    const progress = Math.min(Math.max(raw, 0), 1);
+    targetProgressRef.current = progress;
 
-      // Near ending frames (>= 70% scroll progress), highlight/enable interactive Enter Portfolio
-      const nearEnd = progress >= 0.70;
-      setIsNearEnd((prev) => (prev !== nearEnd ? nearEnd : prev));
-    });
+    // Near ending frames (>= 70% scroll progress), highlight/enable interactive Enter Portfolio
+    const nearEnd = progress >= 0.70;
+    setIsNearEnd((prev) => (prev !== nearEnd ? nearEnd : prev));
   }, []);
 
   // Dynamically size foreground canvas to device physical pixel resolution (prevents CSS upscaling blur)

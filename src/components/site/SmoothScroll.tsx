@@ -37,12 +37,12 @@ export function SmoothScroll() {
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            // Fast & buttery smooth lerp damping for Mac/desktop:
-            // 0.12 closed distance per frame provides immediate responsiveness without sluggish drag
-            lerp: 0.12,
+            duration: 0.9,
+            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            orientation: "vertical",
+            gestureOrientation: "vertical",
             smoothWheel: true,
-            // 1.25 covers distance quickly with natural glide on trackpads and mouse wheels
-            wheelMultiplier: 1.25,
+            wheelMultiplier: 1.15,
             touchMultiplier: 1.5,
             infinite: false,
           });

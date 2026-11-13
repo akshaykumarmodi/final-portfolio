@@ -304,8 +304,8 @@ export function HeroFog() {
     const updateSize = (rectW?: number, rectH?: number) => {
       const containerW = rectW || container.clientWidth || window.innerWidth || 1280;
       const containerH = rectH || container.clientHeight || window.innerHeight || 720;
-      // Cap render buffer dimension to max 1280px for rock-solid full-screen GPU frame pacing
-      const scale = Math.min(1, 1280 / Math.max(containerW, 1));
+      // Cap render buffer dimension to max 640px for rock-solid 60/120fps GPU frame pacing across section transitions
+      const scale = Math.min(1, 640 / Math.max(containerW, 1));
       const w = Math.max(Math.floor(containerW * scale), 1);
       const h = Math.max(Math.floor(containerH * scale), 1);
 
@@ -331,7 +331,7 @@ export function HeroFog() {
     });
     ro.observe(container);
 
-    // Pause rendering when offscreen with a 150px margin for seamless transition handoffs
+    // Pause rendering when offscreen with a tight 30px margin to avoid competing dual-shader GPU stalls
     const io = new IntersectionObserver(
       ([entry]) => {
         const nextVisible = entry ? entry.isIntersecting : true;
@@ -346,7 +346,7 @@ export function HeroFog() {
           rafId = 0;
         }
       },
-      { threshold: 0, rootMargin: "150px 0px" },
+      { threshold: 0, rootMargin: "30px 0px" },
     );
     io.observe(container);
 

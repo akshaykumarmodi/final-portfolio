@@ -46,16 +46,15 @@ export function scrollToSection(id: string) {
     return;
   }
 
+  const targetTop = Math.max(0, Math.round(el.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0)));
+
   if (lenisInstance) {
-    lenisInstance.scrollTo(el, {
-      duration: smooth ? 0.9 : 0,
+    lenisInstance.scrollTo(targetTop, {
+      duration: smooth ? 0.85 : 0,
       immediate: !smooth,
     });
     return;
   }
-
-  // Navigate to the exact beginning of the section without leaving any portion of previous sections visible
-  const targetTop = Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY));
 
   window.scrollTo({
     top: targetTop,

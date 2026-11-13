@@ -75,7 +75,7 @@ export function Hero() {
       ([e]) => {
         if (e) setVisible(e.isIntersecting);
       },
-      { threshold: 0, rootMargin: "200px 0px" },
+      { threshold: 0, rootMargin: "40px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();

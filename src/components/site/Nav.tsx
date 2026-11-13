@@ -272,7 +272,7 @@ export function Nav() {
               aria-label={enabled ? "Turn sound off" : "Turn sound on"}
               className="glass-pill glow-border flex h-9 sm:h-10 md:h-11 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3.5 md:px-4 text-xs sm:text-sm md:text-[0.95rem] font-medium text-foreground transition-all duration-200 hover:scale-105 hover:border-primary-glow/60 cursor-pointer"
             >
-              <span className="inline text-xs sm:text-sm">Sound {enabled ? "On" : "Off"}</span>
+              <span className="hidden sm:inline">Sound {enabled ? "On" : "Off"}</span>
               <SoundWaves on={enabled} />
             </button>
 

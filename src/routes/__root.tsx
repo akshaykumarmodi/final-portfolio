@@ -159,64 +159,28 @@ function RootShell({ children }: { children: ReactNode }) {
                     }
                   } catch(e){}
 
-                  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
-                    (navigator.maxTouchPoints > 0 && /Macintosh|Mobile|Tablet/i.test(navigator.userAgent)) ||
-                    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-
-                  a.muted = false;
-                  try { a.volume = 0.75; } catch(e){}
-
-                  if ('audioSession' in navigator) {
-                    try {
-                      navigator.audioSession.type = 'playback';
-                    } catch(e){}
-                  }
-
-                  var isPlaying = false;
-                  var unlockBound = false;
-
-                  // -------------------------------------------------------------
-                  // DESKTOP: Preserve exact desktop audio behavior completely
-                  // -------------------------------------------------------------
-                  if (!isMobile) {
-                    var p = a.play();
-                    if (p !== undefined && typeof p.then === 'function') {
-                      p.then(function() {
-                        isPlaying = true;
-                      }).catch(function() {
-                        function onDesktopGesture() {
-                          ['click', 'keydown', 'pointerdown', 'mousedown'].forEach(function(ev) {
-                            window.removeEventListener(ev, onDesktopGesture, true);
-                            document.removeEventListener(ev, onDesktopGesture, true);
-                          });
-                          a.muted = false;
-                          try { a.volume = 0.75; } catch(e){}
-                          a.play().catch(function(){});
-                        }
-                        ['click', 'keydown', 'pointerdown', 'mousedown'].forEach(function(ev) {
-                          window.addEventListener(ev, onDesktopGesture, { capture: true, once: true, passive: true });
-                          document.addEventListener(ev, onDesktopGesture, { capture: true, once: true, passive: true });
-                        });
-                      });
-                    }
-                    return;
-                  }
-
-                  // -------------------------------------------------------------
-                  // MOBILE-ONLY: iPhone Safari, iPhone Chrome, Android Chrome
-                  // -------------------------------------------------------------
-                  function primeMobileAudioHardware() {
+                  try {
                     if ('audioSession' in navigator) {
-                      try {
-                        navigator.audioSession.type = 'playback';
-                      } catch(e){}
+                      navigator.audioSession.type = 'playback';
                     }
+                  } catch(e){}
+
+                  try { a.volume = 0.75; } catch(e){}
+                  a.muted = false;
+
+                  var actx = null;
+                  function primeAudioHardware() {
+                    try {
+                      if ('audioSession' in navigator) {
+                        navigator.audioSession.type = 'playback';
+                      }
+                    } catch(e){}
                     try {
                       var AC = window.AudioContext || window.webkitAudioContext;
                       if (AC) {
-                        var actx = window.__akm_actx = window.__akm_actx || new AC();
+                        actx = window.__akm_actx = window.__akm_actx || new AC();
                         if (actx.state === 'suspended') {
-                          actx.resume().catch(function(){});
+                          actx.resume().catch(function() {});
                         }
                         var buf = actx.createBuffer(1, 1, 22050);
                         var src = actx.createBufferSource();
@@ -227,15 +191,12 @@ function RootShell({ children }: { children: ReactNode }) {
                     } catch(e){}
                   }
 
-                  function tryMobilePlay() {
-                    if (!a || isPlaying) return;
-                    if (!a.paused && a.currentTime > 0) {
-                      isPlaying = true;
-                      cleanupMobileListeners();
-                      return;
-                    }
+                  var isPlaying = false;
 
-                    primeMobileAudioHardware();
+                  function startSound() {
+                    if (!a || isPlaying) return;
+                    primeAudioHardware();
+
                     a.muted = false;
                     try { a.volume = 0.75; } catch(e){}
 
@@ -243,66 +204,67 @@ function RootShell({ children }: { children: ReactNode }) {
                     if (p !== undefined && typeof p.then === 'function') {
                       p.then(function() {
                         isPlaying = true;
-                        cleanupMobileListeners();
+                        removeListeners();
                       }).catch(function() {
-                        // Awaiting user gesture
+                        // Autoplay policy waiting for user gesture on mobile
                       });
                     } else if (!a.paused) {
                       isPlaying = true;
-                      cleanupMobileListeners();
+                      removeListeners();
                     }
                   }
 
-                  // 1. Attempt mobile autoplay on site open
-                  tryMobilePlay();
-                  window.addEventListener('DOMContentLoaded', tryMobilePlay, { once: true });
-                  window.addEventListener('load', tryMobilePlay, { once: true });
-                  window.addEventListener('pageshow', tryMobilePlay, { once: true });
+                  // 1. Direct unmuted autoplay on initial website entry
+                  startSound();
 
-                  // 2. Mobile first-interaction unlock (touchstart, pointerdown, touchend, pointerup, click)
-                  // Ensures playback starts on the very first touch without waiting for a second tap
-                  var mobileEvents = ['touchstart', 'pointerdown', 'touchend', 'pointerup', 'click'];
+                  // 2. Lifecycle triggers across all browsers
+                  window.addEventListener('DOMContentLoaded', startSound, { once: true });
+                  window.addEventListener('load', startSound, { once: true });
+                  window.addEventListener('pageshow', startSound, { once: true });
 
-                  function onMobileFirstInteraction() {
-                    tryMobilePlay();
+                  // 3. User interaction triggers for mobile touch, tap, click, key
+                  var gestureEvents = [
+                    'touchend',
+                    'pointerup',
+                    'click',
+                    'touchstart',
+                    'pointerdown',
+                    'keydown',
+                    'keyup'
+                  ];
+
+                  function onGesture() {
+                    startSound();
                   }
 
-                  function cleanupMobileListeners() {
-                    if (!unlockBound) return;
-                    unlockBound = false;
-                    mobileEvents.forEach(function(ev) {
-                      window.removeEventListener(ev, onMobileFirstInteraction, true);
-                      document.removeEventListener(ev, onMobileFirstInteraction, true);
+                  function removeListeners() {
+                    gestureEvents.forEach(function(ev) {
+                      window.removeEventListener(ev, onGesture, true);
+                      document.removeEventListener(ev, onGesture, true);
                       if (document.body) {
-                        document.body.removeEventListener(ev, onMobileFirstInteraction, true);
+                        document.body.removeEventListener(ev, onGesture, true);
                       }
                     });
                   }
 
-                  unlockBound = true;
-                  mobileEvents.forEach(function(ev) {
-                    window.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
-                    document.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                  gestureEvents.forEach(function(ev) {
+                    window.addEventListener(ev, onGesture, { capture: true, passive: true });
+                    document.addEventListener(ev, onGesture, { capture: true, passive: true });
                   });
 
                   if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', function() {
-                      if (document.body && unlockBound && !isPlaying) {
-                        mobileEvents.forEach(function(ev) {
-                          document.body.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                      if (document.body) {
+                        gestureEvents.forEach(function(ev) {
+                          document.body.addEventListener(ev, onGesture, { capture: true, passive: true });
                         });
                       }
                     }, { once: true });
-                  } else if (document.body && unlockBound && !isPlaying) {
-                    mobileEvents.forEach(function(ev) {
-                      document.body.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                  } else if (document.body) {
+                    gestureEvents.forEach(function(ev) {
+                      document.body.addEventListener(ev, onGesture, { capture: true, passive: true });
                     });
                   }
-
-                  a.addEventListener('playing', function() {
-                    isPlaying = true;
-                    cleanupMobileListeners();
-                  }, { once: true });
                 } catch(e){}
               })();
             `,

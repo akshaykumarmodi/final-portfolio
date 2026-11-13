@@ -1,47 +1,116 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import fs from "node:fs";
-import path from "node:path";
-import { JOURNEY_MILESTONES } from "../src/content/journey";
 
-export default async function handler(
-  req: IncomingMessage & { method?: string; body?: any; query?: any },
-  res: ServerResponse & {
-    status?: (code: number) => any;
-    json?: (data: any) => any;
-    setHeader: (name: string, value: string) => any;
-    end: (chunk?: any) => any;
+const MILESTONES = [
+  {
+    id: "m-01-start",
+    slug: "the-beginning",
+    stage: "start",
+    title: "Pursuing B.Tech",
+    subtitle: "Newton School of Technology, Rishihood University",
+    description:
+      "Pursuing B.Tech in Computer Science & Artificial Intelligence. Built first algorithmic foundations and discovered the passion for turning logical code into creative digital experiences.",
+    year: "2024",
+    dateRange: "Aug 2024",
+    category: "Genesis",
+    iconName: "Compass",
+    status: "completed",
+    highlighted: false,
+    published: true,
+    sortOrder: 1,
+    tags: ["Algorithms", "Python", "Computer Science"],
+    imageUrl: "/assets/milestones/m2-learning.svg",
   },
-) {
+  {
+    id: "m-02-learning",
+    slug: "foundations-mastery",
+    stage: "learning",
+    title: "Mastering the Modern Stack",
+    subtitle: "Frontend Architecture & System Internals",
+    description:
+      "Deep-dived into modern TypeScript, distributed architectures, database design, and applied LLM engineering. Began crafting custom GLSL shaders and WebGL graphics experiments.",
+    year: "2024",
+    dateRange: "Late 2024",
+    category: "Core Skills",
+    iconName: "Code2",
+    status: "completed",
+    highlighted: false,
+    published: true,
+    sortOrder: 2,
+    tags: ["React", "TypeScript", "WebGL", "FastAPI"],
+    imageUrl: "/assets/milestones/m2-learning.svg",
+  },
+  {
+    id: "m-03-building",
+    slug: "creative-engineering",
+    stage: "building",
+    title: "Creative Engineering & 3D Web",
+    subtitle: "Interactive Digital Experiences",
+    description:
+      "Engineered physics-based simulations, custom GLSL visual shaders, procedural Web Audio engines, and rich 3D user interfaces. Blending mathematical precision with artistic storytelling.",
+    year: "2025",
+    dateRange: "Early 2025",
+    category: "Creative Tech",
+    iconName: "Sparkles",
+    status: "completed",
+    highlighted: false,
+    published: true,
+    sortOrder: 3,
+    tags: ["Three.js", "Shaders", "Framer Motion", "Web Audio"],
+    imageUrl: "/assets/milestones/m3-building.svg",
+  },
+  {
+    id: "m-04-hackathons",
+    slug: "hackathons-and-sprints",
+    stage: "hackathons",
+    title: "Competitive Hackathons",
+    subtitle: "Rapid Prototyping & Innovation",
+    description:
+      "Collaborated in intensive 24-48 hour hackathons, shipping functional AI prototypes, solving developer reputation challenges, and demoing live to developer and open-source communities.",
+    year: "2026",
+    dateRange: "Mid 2026",
+    category: "Competitions",
+    iconName: "Trophy",
+    status: "in-progress",
+    highlighted: false,
+    published: true,
+    sortOrder: 4,
+    tags: ["Hackathons", "Rapid Shipping", "Team Leadership"],
+    imageUrl: "/assets/milestones/m4-hackathons.svg",
+  },
+  {
+    id: "m-05-projects",
+    slug: "shipping-real-products",
+    stage: "projects",
+    title: "Shipping Real-World Systems",
+    subtitle: "TrustMesh & Study Tutor AI",
+    description:
+      "Shipped TrustMesh (an open-source contributor reputation network against AI slop) and Study Tutor AI (an adaptive interactive educational learning assistant) for active users.",
+    year: "2026",
+    dateRange: "2026",
+    category: "Products & Open Source",
+    iconName: "Rocket",
+    status: "completed",
+    highlighted: false,
+    published: true,
+    sortOrder: 5,
+    tags: ["TrustMesh", "Study Tutor AI", "Open Source"],
+    imageUrl: "/assets/milestones/m5-projects.svg",
+  },
+];
+
+export default function handler(req: IncomingMessage, res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Content-Type", "application/json");
 
   if (req.method === "OPTIONS") {
-    if (res.status) return res.status(200).end();
     res.statusCode = 200;
-    return res.end();
+    res.end();
+    return;
   }
 
-  // Try reading fresh from portfolio-db.json if available
-  let milestones = JOURNEY_MILESTONES;
-  try {
-    const dbPath = path.join(process.cwd(), "data", "portfolio-db.json");
-    if (fs.existsSync(dbPath)) {
-      const parsed = JSON.parse(fs.readFileSync(dbPath, "utf8"));
-      if (parsed.journey && Array.isArray(parsed.journey) && parsed.journey.length > 0) {
-        milestones = parsed.journey;
-      }
-    }
-  } catch {}
-
-  const published = milestones
-    .filter((m: any) => m.published !== false)
-    .sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
-
-  if (res.json) {
-    return res.json(published);
-  }
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(published));
+  res.statusCode = 200;
+  res.end(JSON.stringify(MILESTONES));
 }

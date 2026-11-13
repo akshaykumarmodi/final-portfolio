@@ -139,7 +139,7 @@ export function Contact() {
   return (
     <section
       id="contact"
-      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-20 sm:py-24 text-foreground scroll-mt-0"
+      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-20 sm:py-24 text-foreground bg-[#0b0816] scroll-mt-0"
     >
       {/* ----------------------------------------------------------------- */}
       {/* Background world: continuous with Hero, About, Projects & Journey */}
@@ -171,9 +171,9 @@ export function Contact() {
         {/* SECTION HEADER                                                */}
         {/* ============================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 22 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
+          viewport={{ once: true, margin: "100px 0px 50px 0px" }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-2xl mx-auto pb-10 sm:pb-12"
         >
@@ -200,9 +200,9 @@ export function Contact() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Direct Connect & Info Card */}
           <motion.div
-            initial={{ opacity: 0, x: -24 }}
+            initial={reducedMotion ? false : { opacity: 0, x: -24 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "100px 0px 50px 0px" }}
             transition={{ duration: 0.8 }}
             className="lg:col-span-5 space-y-4"
           >
@@ -289,9 +289,9 @@ export function Contact() {
 
           {/* Right Column: Functional Interactive Contact Console */}
           <motion.div
-            initial={{ opacity: 0, x: 24 }}
+            initial={reducedMotion ? false : { opacity: 0, x: 24 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "100px 0px 50px 0px" }}
             transition={{ duration: 0.8 }}
             className="lg:col-span-7"
           >
@@ -307,6 +307,7 @@ export function Contact() {
                 <div
                   aria-hidden
                   className="pointer-events-none absolute -inset-[1.5px] rounded-[27px] overflow-hidden opacity-60"
+                  style={{ contain: "paint" }}
                 >
                   <div
                     className="absolute -inset-[100%] animate-[border-beam-spin_10s_linear_infinite]"

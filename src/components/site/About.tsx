@@ -381,7 +381,7 @@ export function About() {
   return (
     <section
       id="about"
-      className="relative isolate min-h-[100svh] lg:min-h-[100svh] w-full overflow-hidden flex flex-col justify-start lg:justify-center pt-16 sm:pt-20 lg:pt-16 pb-16 sm:pb-20 text-foreground scroll-mt-0"
+      className="relative isolate min-h-[100svh] lg:min-h-[100svh] w-full overflow-hidden flex flex-col justify-start lg:justify-center pt-16 sm:pt-20 lg:pt-16 pb-16 sm:pb-20 text-foreground bg-[#0b0816] scroll-mt-0"
     >
       {/* ----------------------------------------------------------------- */}
       {/* Background world: continuous with Hero landscape & nebula        */}
@@ -604,9 +604,9 @@ export function About() {
           <div className="lg:col-span-7 flex flex-col justify-center">
             {/* Section Eyebrow */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.1 }}
+              viewport={{ once: true, margin: "120px 0px 60px 0px" }}
               transition={{ duration: 0.5 }}
               className="glass-pill inline-flex items-center gap-2 rounded-full px-3 py-1 text-[0.70rem] font-semibold tracking-wider text-cyan-300 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.2)] w-fit mb-2 sm:mb-2.5"
             >
@@ -616,9 +616,9 @@ export function About() {
 
             {/* Main Editorial Serif Heading */}
             <motion.h2
-              initial={{ opacity: 0, y: 14 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.1 }}
+              viewport={{ once: true, margin: "120px 0px 60px 0px" }}
               transition={{ duration: 0.7, delay: 0.08 }}
               className="font-display text-[clamp(1.95rem,3.2vw,3.1rem)] font-medium leading-[1.08] tracking-tight text-white mb-2 sm:mb-2.5"
             >
@@ -631,18 +631,18 @@ export function About() {
 
             {/* Glowing Accent Rule */}
             <motion.div
-              initial={{ scaleX: 0 }}
+              initial={reducedMotion ? false : { scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "120px 0px 60px 0px" }}
               transition={{ duration: 0.7, delay: 0.18 }}
               className="h-[2px] w-20 origin-left rounded-full bg-gradient-to-r from-purple-500 via-sky-400 to-transparent shadow-[0_0_10px_#a855f7] mb-2.5 sm:mb-3"
             />
 
             {/* Introduction Paragraphs with Purple Quote */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.1 }}
+              viewport={{ once: true, margin: "120px 0px 60px 0px" }}
               transition={{ duration: 0.7, delay: 0.15 }}
               className="relative flex gap-3 text-[0.88rem] sm:text-[0.93rem] leading-[1.5] text-slate-200 font-normal mb-2.5 sm:mb-3"
             >
@@ -661,9 +661,9 @@ export function About() {
 
             {/* Highlighted Tagline */}
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={reducedMotion ? false : { opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "120px 0px 60px 0px" }}
               transition={{ duration: 0.7, delay: 0.25 }}
               className="flex flex-wrap items-center gap-2 text-[0.70rem] sm:text-[0.76rem] font-bold tracking-[0.24em] mb-3 sm:mb-3.5"
             >
@@ -687,9 +687,9 @@ export function About() {
                   return (
                     <motion.div
                       key={idx}
-                      initial={{ opacity: 0, y: 12 }}
+                      initial={reducedMotion ? false : { opacity: 0, y: 12 }}
                       whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, margin: "100px 0px 50px 0px" }}
                       transition={{ duration: 0.45, delay: 0.04 * idx }}
                       whileHover={{ y: -3, scale: 1.03 }}
                       onMouseEnter={() => play("hover")}
@@ -722,9 +722,9 @@ export function About() {
                   return (
                     <motion.div
                       key={idx}
-                      initial={{ opacity: 0, scale: 0.96 }}
+                      initial={reducedMotion ? false : { opacity: 0, scale: 0.96 }}
                       whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, margin: "100px 0px 50px 0px" }}
                       transition={{ duration: 0.45, delay: 0.04 * idx }}
                       whileHover={{ scale: 1.03, y: -2 }}
                       onMouseEnter={() => play("hover")}

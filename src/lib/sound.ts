@@ -125,8 +125,7 @@ class SoundEngine {
 
       audio.preload = "auto";
       audio.loop = true;
-      audio.setAttribute("playsinline", "true");
-      audio.setAttribute("webkit-playsinline", "true");
+      (audio as unknown as { playsInline?: boolean }).playsInline = true;
 
       if (!audio.paused && !audio.muted && audio.volume > 0) {
         this._isPlaying = true;

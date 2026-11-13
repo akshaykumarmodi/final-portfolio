@@ -64,8 +64,9 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
     const rect = fgCanvas.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      const targetW = Math.max(1920, Math.round(rect.width * dpr));
-      const targetH = Math.max(1080, Math.round(rect.height * dpr));
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const targetW = isMobile ? Math.min(1280, Math.round(rect.width * dpr)) : Math.max(1920, Math.round(rect.width * dpr));
+      const targetH = isMobile ? Math.min(720, Math.round(rect.height * dpr)) : Math.max(1080, Math.round(rect.height * dpr));
       if (fgCanvas.width !== targetW || fgCanvas.height !== targetH) {
         fgCanvas.width = targetW;
         fgCanvas.height = targetH;
@@ -127,9 +128,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     lastDrawnIndexRef.current = idx;
   }, []);
 
-  // Preload all 120 sequential frames progressively
+  // Preload sequential frames progressively without saturating network
   useEffect(() => {
     let isCancelled = false;
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
     // 1. Immediately load frame 0 (first frame) for instant zero-flash initial paint
     const img0 = new Image();
@@ -142,7 +144,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       drawFramePair(0);
     };
 
-    // 2. Preload final frame and key milestones early (for instant scrubbing and hold)
+    // 2. Preload key milestones early
     const priorityIndices = [TOTAL_FRAMES - 1, 30, 60, 90];
     priorityIndices.forEach((idx) => {
       const img = new Image();
@@ -154,26 +156,51 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       };
     });
 
-    // 3. Incrementally preload all remaining frames
+    // 3. Incrementally preload frames in controlled batches
+    // On mobile screens, sample every 3rd frame (40 frames total) to save 75% data and GPU RAM
+    const step = isMobile ? 3 : 1;
     const remaining: number[] = [];
-    for (let i = 1; i < TOTAL_FRAMES - 1; i++) {
+    for (let i = 1; i < TOTAL_FRAMES - 1; i += step) {
       if (!priorityIndices.includes(i)) {
         remaining.push(i);
       }
     }
 
-    remaining.forEach((idx) => {
-      const img = new Image();
-      img.src = getFrameUrl(idx);
-      img.onload = () => {
-        if (isCancelled) return;
-        imagesRef.current[idx] = img;
-        loadedFlagsRef.current[idx] = true;
-      };
-    });
+    // Stream batches of 4 images sequentially to leave bandwidth free for page content
+    let currentIndex = 0;
+    const loadBatch = () => {
+      if (isCancelled || currentIndex >= remaining.length) return;
+      const batch = remaining.slice(currentIndex, currentIndex + 4);
+      currentIndex += 4;
+      let completedInBatch = 0;
+
+      batch.forEach((idx) => {
+        const img = new Image();
+        img.src = getFrameUrl(idx);
+        img.onload = img.onerror = () => {
+          if (isCancelled) return;
+          if (img.complete && img.naturalWidth > 0) {
+            imagesRef.current[idx] = img;
+            loadedFlagsRef.current[idx] = true;
+          }
+          completedInBatch++;
+          if (completedInBatch === batch.length) {
+            if ("requestIdleCallback" in window) {
+              (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(loadBatch);
+            } else {
+              setTimeout(loadBatch, 30);
+            }
+          }
+        };
+      });
+    };
+
+    // Begin background frame streaming after frame 0 is drawn
+    const timer = setTimeout(loadBatch, 80);
 
     return () => {
       isCancelled = true;
+      clearTimeout(timer);
     };
   }, [drawFramePair]);
 
@@ -302,7 +329,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
         )}
 
         {/* TOP HEADER: Stylized AKM Logo (Left) and Skip Intro (Right) */}
-        <header className="absolute top-0 inset-x-0 z-30 flex items-center justify-between p-5 sm:p-8 pointer-events-none">
+        <header className="absolute top-0 inset-x-0 z-30 flex items-center justify-between p-3 min-[380px]:p-5 sm:p-8 pointer-events-none">
           {/* Top-Left: AKM Logo */}
           <button
             onClick={handleEnterPortfolio}
@@ -313,7 +340,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
           </button>
 
           {/* Top-Right: Sound toggle and Skip Intro */}
-          <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+          <div className="flex items-center gap-1.5 min-[360px]:gap-2 sm:gap-3 pointer-events-auto">
             <button
               type="button"
               onClick={(e) => {
@@ -325,16 +352,16 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
               }}
               aria-pressed={enabled}
               aria-label={enabled ? "Turn sound off" : "Turn sound on"}
-              className="glass-pill glow-border group inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
+              className="glass-pill glow-border group inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 min-[360px]:px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
             >
-              <span className="hidden xs:inline">Sound {enabled ? "On" : "Off"}</span>
+              <span className="hidden sm:inline">Sound {enabled ? "On" : "Off"}</span>
               <SoundWaves on={enabled} />
             </button>
 
             <button
               onClick={handleEnterPortfolio}
               aria-label="Skip Intro"
-              className="group inline-flex items-center gap-2 rounded-full px-4 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
+              className="group inline-flex items-center gap-1.5 min-[360px]:gap-2 rounded-full px-3 min-[360px]:px-4 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
             >
               <span className="tracking-wide">Skip Intro</span>
               <span className="text-purple-400 text-xs sm:text-sm transition-transform duration-300 group-hover:translate-x-0.5">
@@ -345,9 +372,9 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
         </header>
 
         {/* BOTTOM FOOTER: Dream • Code • Create | Let's Build Something Amazing 💜 */}
-        <div className="absolute bottom-0 inset-x-0 z-20 p-5 sm:p-8 flex items-end justify-between pointer-events-none">
+        <div className="absolute bottom-0 inset-x-0 z-20 p-3 min-[380px]:p-5 sm:p-8 flex items-end justify-between pointer-events-none">
           {/* Bottom-Left: | Dream • Code • Create */}
-          <div className="hidden xs:flex items-center gap-2 text-xs sm:text-sm tracking-widest text-slate-300/85 font-light select-none transition-opacity duration-500">
+          <div className="hidden min-[480px]:flex items-center gap-2 text-xs sm:text-sm tracking-widest text-slate-300/85 font-light select-none transition-opacity duration-500">
             <span className="inline-block w-[3px] h-4 bg-gradient-to-b from-purple-400 to-purple-600 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
             <span>Dream • Code • Create</span>
           </div>
@@ -356,7 +383,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
           <div className="flex-1" />
 
           {/* Bottom-Right: Let's Build Something Amazing 💜 */}
-          <div className="hidden xs:flex items-center gap-1.5 text-xs sm:text-sm tracking-wider text-slate-300/85 font-light select-none transition-opacity duration-500">
+          <div className="hidden min-[480px]:flex items-center gap-1.5 text-xs sm:text-sm tracking-wider text-slate-300/85 font-light select-none transition-opacity duration-500">
             <span>Let's Build Something Amazing</span>
             <span className="text-purple-400 text-xs sm:text-sm">💜</span>
           </div>

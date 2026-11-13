@@ -401,6 +401,7 @@ export function Projects() {
   const { play } = useSound();
   const { projects, availableCategories, addProject, updateProject } = useProjects();
   const { isAdmin } = useAdmin();
+  const reducedMotion = prefersReducedMotion();
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -491,7 +492,7 @@ export function Projects() {
   return (
     <section
       id="projects"
-      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-16 sm:py-24 text-foreground scroll-mt-0"
+      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-16 sm:py-24 text-foreground bg-[#0b0816] scroll-mt-0"
     >
       {/* ----------------------------------------------------------------- */}
       {/* Background world: continuous with Hero and About universe         */}
@@ -520,18 +521,18 @@ export function Projects() {
         {/* SECTION HEADER: Title, Subtitle, & Admin Button               */}
         {/* ============================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 22 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
+          viewport={{ once: true, margin: "100px 0px 50px 0px" }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 pb-6 sm:pb-8"
         >
           <div>
             {/* 03 / PROJECTS badge */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={reducedMotion ? false : { opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "100px 0px 50px 0px" }}
               transition={{ duration: 0.6, delay: 0.1 }}
               className="glass-pill inline-flex items-center gap-2 rounded-full px-3.5 sm:px-4 py-1.5 text-xs font-semibold tracking-wider text-cyan-300 border border-cyan-500/25 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
             >
@@ -574,9 +575,9 @@ export function Projects() {
         {/* CATEGORY FILTER PILLS                                         */}
         {/* ============================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, margin: "100px 0px 50px 0px" }}
           transition={{ duration: 0.7, delay: 0.15 }}
           className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none"
         >
@@ -612,15 +613,15 @@ export function Projects() {
         {/* INTERACTIVE 3D PROJECT GALLERY STAGE                          */}
         {/* ============================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 28 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 28 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
+          viewport={{ once: true, margin: "100px 0px 50px 0px" }}
           transition={{ duration: 0.85, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="relative mt-6 sm:mt-8 flex flex-col items-center justify-center [perspective:1400px]"
         >
           {/* Main 3D Card Stage Carousel: Stable height prevents background WebGL canvas clearing */}
           <div
-            className="relative flex items-center justify-center w-full min-h-[490px] sm:min-h-[550px] md:min-h-[600px] h-[490px] sm:h-[550px] md:h-[600px]"
+            className="relative flex items-center justify-center w-full min-h-[500px] sm:min-h-[550px] md:min-h-[600px] h-[500px] sm:h-[550px] md:h-[600px]"
           >
             {filteredProjects.map((p, idx) => {
               const pKey = p.id || p.slug;

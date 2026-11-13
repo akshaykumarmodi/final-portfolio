@@ -12,6 +12,7 @@ vi.mock("@/lib/sound", () => ({
     isPlaying: false,
     getStoredPreference: () => true,
   },
+  isMobileDevice: () => false,
 }));
 
 describe("ScrollCinematicIntro", () => {

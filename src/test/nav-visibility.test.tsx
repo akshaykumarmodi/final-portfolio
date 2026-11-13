@@ -26,6 +26,7 @@ const mockToggle = vi.fn();
 const mockPlay = vi.fn();
 vi.mock("@/hooks/use-sound", () => ({
   useSound: () => ({
+    isMobile: false,
     enabled: true,
     toggle: mockToggle,
     play: mockPlay,

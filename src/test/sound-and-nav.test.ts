@@ -70,6 +70,47 @@ describe("SoundEngine", () => {
     expect(sound.getStoredPreference()).toBe(true);
     expect(localStorage.getItem("akm-sound")).not.toBe("off");
   });
+
+  it("reliably detects mobile phones and completely disables audio", async () => {
+    const originalUA = navigator.userAgent;
+    try {
+      // Simulate iPhone
+      Object.defineProperty(navigator, "userAgent", {
+        value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+        configurable: true,
+      });
+
+      expect(sound.isMobile).toBe(true);
+      expect(sound.enabled).toBe(false);
+      expect(sound.isPlaying).toBe(false);
+
+      // Verify methods do nothing on mobile
+      await sound.autoStart();
+      await sound.toggle();
+      expect(sound.isPlaying).toBe(false);
+      expect(() => sound.play("click")).not.toThrow();
+
+      // Simulate Android Mobile
+      Object.defineProperty(navigator, "userAgent", {
+        value: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+        configurable: true,
+      });
+      expect(sound.isMobile).toBe(true);
+      expect(sound.enabled).toBe(false);
+
+      // Simulate Desktop/Laptop (MacBook)
+      Object.defineProperty(navigator, "userAgent", {
+        value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        configurable: true,
+      });
+      expect(sound.isMobile).toBe(false);
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: originalUA,
+        configurable: true,
+      });
+    }
+  });
 });
 
 describe("Scroll functionality", () => {

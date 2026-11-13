@@ -184,7 +184,7 @@ This project uses TanStack Start with Nitro and can be deployed directly to:
 **Akshay Kumar Modi**
 - **Website**: [akshaykumarmodi.isonewho.codes](https://akshaykumarmodi.isonewho.codes/)
 - **GitHub**: [@akshaykumarmodi](https://github.com/akshaykumarmodi)
-- **LinkedIn**: [Akshay Kumar Modi](https://www.linkedin.com/in/akshay-kumar-modi/)
+- **LinkedIn**: [Akshay Kumar Modi](https://www.linkedin.com/in/akshay-kumar-modi-27306637b/)
 
 ---
 

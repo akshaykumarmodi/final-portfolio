@@ -129,10 +129,11 @@ function RootShell({ children }: { children: ReactNode }) {
           playsInline
           preload="auto"
           aria-hidden="true"
-          style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
+          className="sr-only"
         >
           <source src="/audio/peaceful-piano-ambient.mp3" type="audio/mpeg" />
           <source src="/audio/peaceful-piano.mp3" type="audio/mpeg" />
+          <source src="/audio/cinematic-ambient.mp3" type="audio/mpeg" />
         </audio>
         <script
           dangerouslySetInnerHTML={{
@@ -142,53 +143,102 @@ function RootShell({ children }: { children: ReactNode }) {
                   var a = document.getElementById('akm-bg-audio');
                   if (!a) return;
 
+                  try {
+                    if (localStorage.getItem('akm-sound') === 'off') {
+                      localStorage.removeItem('akm-sound');
+                    }
+                  } catch(e){}
+
                   a.volume = 0.75;
                   a.muted = false;
 
-                  function tryPlay() {
-                    if (!a) return;
+                  var AC = window.AudioContext || window.webkitAudioContext;
+                  var actx = null;
+                  try {
+                    if (AC) {
+                      actx = window.__akm_actx = window.__akm_actx || new AC();
+                      if (actx.state === 'suspended') {
+                        actx.resume().catch(function() {});
+                      }
+                    }
+                  } catch(e){}
+
+                  var isPlaying = false;
+
+                  function startSound() {
+                    if (!a || isPlaying) return;
+                    try {
+                      if (actx && actx.state === 'suspended') {
+                        actx.resume().catch(function() {});
+                      }
+                    } catch(e){}
+
                     a.muted = false;
                     a.volume = 0.75;
-                    if (a.paused && typeof a.play === 'function') {
-                      a.play().catch(function() {});
+
+                    var p = a.play();
+                    if (p !== undefined && typeof p.then === 'function') {
+                      p.then(function() {
+                        isPlaying = true;
+                        removeListeners();
+                      }).catch(function() {
+                        // Autoplay policy waiting for user gesture; keep listeners active
+                      });
+                    } else if (!a.paused) {
+                      isPlaying = true;
+                      removeListeners();
                     }
                   }
 
                   // 1. Direct unmuted autoplay on initial website entry
-                  var p = a.play();
-                  if (p !== undefined) {
-                    p.catch(function() {
-                      // 2. Play on any natural visitor movement or interaction (no click required!)
-                      var events = [
-                        'pointerdown',
-                        'pointerup',
-                        'pointermove',
-                        'touchstart',
-                        'touchend',
-                        'touchmove',
-                        'mousedown',
-                        'mouseup',
-                        'mousemove',
-                        'click',
-                        'keydown',
-                        'wheel',
-                        'scroll',
-                        'mouseenter',
-                        'focus'
-                      ];
-                      function onAnyInteraction() {
-                        events.forEach(function(ev) {
-                          window.removeEventListener(ev, onAnyInteraction, true);
-                          document.removeEventListener(ev, onAnyInteraction, true);
-                        });
-                        tryPlay();
-                      }
-                      events.forEach(function(ev) {
-                        window.addEventListener(ev, onAnyInteraction, { capture: true, once: true, passive: true });
-                        document.addEventListener(ev, onAnyInteraction, { capture: true, once: true, passive: true });
-                      });
+                  startSound();
+
+                  // 2. Lifecycle triggers across all browsers
+                  window.addEventListener('DOMContentLoaded', startSound, { once: true });
+                  window.addEventListener('load', startSound, { once: true });
+                  window.addEventListener('pageshow', startSound, { once: true });
+
+                  // 3. User interaction triggers: any natural touch, gesture, or keypress starts sound without clicking a button
+                  var gestureEvents = [
+                    'touchstart',
+                    'touchend',
+                    'pointerdown',
+                    'pointerup',
+                    'mousedown',
+                    'mouseup',
+                    'keydown',
+                    'keyup',
+                    'click'
+                  ];
+
+                  function onGesture() {
+                    startSound();
+                  }
+
+                  function onScroll() {
+                    if (!isPlaying) {
+                      startSound();
+                    }
+                  }
+
+                  function removeListeners() {
+                    gestureEvents.forEach(function(ev) {
+                      window.removeEventListener(ev, onGesture, true);
+                      document.removeEventListener(ev, onGesture, true);
+                    });
+                    ['wheel', 'touchmove', 'scroll'].forEach(function(ev) {
+                      window.removeEventListener(ev, onScroll, true);
                     });
                   }
+
+                  gestureEvents.forEach(function(ev) {
+                    window.addEventListener(ev, onGesture, { capture: true, passive: true });
+                    document.addEventListener(ev, onGesture, { capture: true, passive: true });
+                  });
+
+                  ['wheel', 'touchmove', 'scroll'].forEach(function(ev) {
+                    window.addEventListener(ev, onScroll, { capture: true, passive: true });
+                  });
                 } catch(e){}
               })();
             `,

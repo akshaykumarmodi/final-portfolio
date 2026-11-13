@@ -387,7 +387,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
               aria-label={enabled ? "Turn sound off" : "Turn sound on"}
               className="glass-pill glow-border group inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 min-[360px]:px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
             >
-              <span className="hidden sm:inline">Sound {enabled ? "On" : "Off"}</span>
+              <span className="inline text-xs sm:text-sm">Sound {enabled ? "On" : "Off"}</span>
               <SoundWaves on={enabled} />
             </button>
 

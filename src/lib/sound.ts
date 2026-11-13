@@ -49,13 +49,14 @@ class SoundEngine {
         /* ignore */
       }
 
-      // 1. Initial attempt on DOM ready
+      // 1. Initial attempt on DOM ready and page show
       if (document.readyState === "complete" || document.readyState === "interactive") {
         void this.autoStart();
       } else {
         window.addEventListener("DOMContentLoaded", () => void this.autoStart(), { once: true });
         window.addEventListener("load", () => void this.autoStart(), { once: true });
       }
+      window.addEventListener("pageshow", () => void this.autoStart(), { once: true });
 
       // Also register natural interaction listeners immediately so mouse move, scroll, or touch starts sound without click
       this.registerUnlockListeners();
@@ -117,11 +118,8 @@ class SoundEngine {
         audio.loop = true;
         audio.setAttribute("playsinline", "true");
         audio.setAttribute("webkit-playsinline", "true");
-        audio.style.position = "fixed";
-        audio.style.top = "-9999px";
-        audio.style.left = "-9999px";
-        audio.style.opacity = "0";
-        audio.style.pointerEvents = "none";
+        audio.className = "sr-only";
+        audio.setAttribute("aria-hidden", "true");
         try {
           document.body.appendChild(audio);
         } catch {
@@ -216,21 +214,17 @@ class SoundEngine {
 
     // Natural visitor interactions to immediately start sound without requiring a button click
     const events = [
-      "pointerdown",
-      "pointerup",
-      "pointermove",
       "touchstart",
       "touchend",
-      "touchmove",
+      "pointerdown",
+      "pointerup",
       "mousedown",
       "mouseup",
-      "mousemove",
-      "click",
       "keydown",
+      "keyup",
+      "click",
       "wheel",
-      "scroll",
-      "mouseenter",
-      "focus",
+      "touchmove",
     ];
 
     events.forEach((e) => {
@@ -292,6 +286,22 @@ class SoundEngine {
       } catch {
         /* await error, retry below */
       }
+    }
+
+    // Awaken OS/browser audio subsystem
+    try {
+      if (typeof window !== "undefined") {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          const actx = (window as unknown as { __akm_actx?: AudioContext }).__akm_actx || new AudioCtx();
+          (window as unknown as { __akm_actx?: AudioContext }).__akm_actx = actx;
+          if (actx.state === "suspended") {
+            void actx.resume();
+          }
+        }
+      }
+    } catch {
+      /* ignore */
     }
 
     audio.muted = false;

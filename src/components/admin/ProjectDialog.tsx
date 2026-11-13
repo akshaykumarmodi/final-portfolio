@@ -65,6 +65,22 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const screenshotFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Lock body scroll when dialog is open so background page doesn't scroll
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
+  }, [open]);
+
   // Populate form on edit
   useEffect(() => {
     if (project) {
@@ -278,7 +294,8 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative z-10 w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-[24px] bg-[#0c0919] p-6 sm:p-8 text-foreground border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.95)]"
+          data-lenis-prevent="true"
+          className="relative z-10 w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[24px] bg-[#0c0919] text-foreground border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.95)] overflow-hidden overscroll-contain"
           style={{
             borderLeft: "2.5px solid #a855f7",
             borderRight: "2.5px solid #06b6d4",
@@ -286,7 +303,7 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="shrink-0 flex items-center justify-between p-5 sm:px-8 sm:py-5 border-b border-white/10 bg-[#0c0919]/95 backdrop-blur-md z-10">
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-primary-glow">
                 {project ? "Edit Project" : "New Project"}
@@ -296,6 +313,7 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
               </h2>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="glass-pill grid size-9 place-items-center rounded-full text-foreground/80 hover:text-white"
             >
@@ -303,14 +321,18 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
             </button>
           </div>
 
-          {error && (
-            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-950/40 p-3 text-sm text-red-300">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
-          <form onSubmit={handleSubmit} className="mt-6 space-y-5 text-sm">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* Scrollable Form Body */}
+            <div
+              data-lenis-prevent="true"
+              className="flex-1 min-h-0 overflow-y-auto p-5 sm:p-8 space-y-5 text-sm overscroll-contain scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
+            >
+              {error && (
+                <div className="rounded-xl border border-red-500/30 bg-red-950/40 p-3 text-sm text-red-300">
+                  {error}
+                </div>
+              )}
             {/* Title & Slug */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -769,14 +791,21 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
               </label>
             </div>
 
-            {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-6 border-t border-white/10">
-              <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="hero" disabled={saving} className="px-6">
-                {saving ? "Saving..." : project ? "Save Changes" : "Create Project"}
-              </Button>
+            </div>
+
+            {/* Fixed/Sticky Footer Buttons */}
+            <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-4 sm:px-8 border-t border-white/10 bg-[#0c0919]/95 backdrop-blur-md z-10">
+              <span className="text-xs text-slate-400 hidden sm:inline">
+                * Changes save instantly
+              </span>
+              <div className="flex items-center gap-3 ml-auto">
+                <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="hero" disabled={saving} className="px-6">
+                  {saving ? "Saving..." : project ? "Save Changes" : "Create Project"}
+                </Button>
+              </div>
             </div>
           </form>
         </motion.div>

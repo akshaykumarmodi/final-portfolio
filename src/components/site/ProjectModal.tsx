@@ -57,7 +57,8 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
           transition={{ type: "spring", stiffness: 320, damping: 28 }}
-          className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[28px] bg-[#0c0919] p-5 sm:p-8 md:p-10 text-foreground border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.95)]"
+          data-lenis-prevent="true"
+          className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain rounded-[28px] bg-[#0c0919] p-5 sm:p-8 md:p-10 text-foreground border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.95)] scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
           style={{
             borderLeft: "2.5px solid #a855f7",
             borderRight: "2.5px solid #06b6d4",

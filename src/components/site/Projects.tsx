@@ -29,8 +29,9 @@ interface ProjectCardProps {
   project: Project;
   isActive: boolean;
   position: "center" | "left" | "right" | "hidden";
-  isWrapping?: boolean;
   onClick: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
   onViewDetails: (project: Project) => void;
   onEdit?: (project: Project) => void;
   isAdmin?: boolean;
@@ -40,8 +41,9 @@ function ProjectCard({
   project,
   isActive,
   position,
-  isWrapping,
   onClick,
+  onNext,
+  onPrev,
   onViewDetails,
   onEdit,
   isAdmin,
@@ -80,6 +82,10 @@ function ProjectCard({
     mouseY.set(0);
   }, [mouseX, mouseY]);
 
+  const isSmall = typeof window !== "undefined" && window.innerWidth < 640;
+  const sideX = isSmall ? "62%" : "70%";
+  const sideScale = isSmall ? 0.82 : 0.86;
+
   // Transform states depending on 3D gallery carousel position (100% GPU-composited, zero CSS filter repaints)
   const getVariants = () => {
     switch (position) {
@@ -94,28 +100,28 @@ function ProjectCard({
         };
       case "left":
         return {
-          x: "-72%",
-          scale: 0.86,
-          rotateY: 20,
+          x: `-${sideX}`,
+          scale: sideScale,
+          rotateY: 18,
           z: -120,
           opacity: 0.55,
           zIndex: 10,
         };
       case "right":
         return {
-          x: "72%",
-          scale: 0.86,
-          rotateY: -20,
+          x: sideX,
+          scale: sideScale,
+          rotateY: -18,
           z: -120,
           opacity: 0.55,
           zIndex: 10,
         };
       default:
         return {
-          x: "100%",
-          scale: 0.7,
+          x: "0%",
+          scale: 0.6,
           rotateY: 0,
-          z: -250,
+          z: -260,
           opacity: 0,
           zIndex: 0,
         };
@@ -123,33 +129,37 @@ function ProjectCard({
   };
 
   const variants = getVariants();
-  const initial = isWrapping ? { ...variants, opacity: 0 } : false;
 
   return (
     <motion.div
       ref={cardRef}
-      initial={initial}
       animate={variants}
-      transition={
-        isWrapping
-          ? {
-              opacity: { duration: 0.28, ease: "easeOut" },
-            }
-          : {
-              type: "spring",
-              stiffness: 230,
-              damping: 25,
-              mass: 0.7,
-            }
-      }
+      transition={{
+        type: "spring",
+        stiffness: 240,
+        damping: 26,
+        mass: 0.7,
+      }}
+      drag={isActive ? "x" : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.25}
+      onDragEnd={(_e, info) => {
+        if (!isActive) return;
+        const swipeThreshold = 50;
+        if (info.offset.x < -swipeThreshold || info.velocity.x < -350) {
+          onNext?.();
+        } else if (info.offset.x > swipeThreshold || info.velocity.x > 350) {
+          onPrev?.();
+        }
+      }}
       onClick={!isActive ? onClick : undefined}
       onPointerMove={isActive ? handlePointerMove : undefined}
       onPointerLeave={isActive ? handlePointerLeave : undefined}
-      className={`absolute top-0 select-none will-change-transform [transform:translateZ(0)] ${
-        isActive ? "cursor-default" : "cursor-pointer hover:opacity-85"
+      className={`absolute top-0 select-none will-change-transform touch-pan-y [transform:translateZ(0)] ${
+        isActive ? "cursor-grab active:cursor-grabbing" : "cursor-pointer hover:opacity-85"
       }`}
       style={{
-        width: "min(500px, 86vw)",
+        width: "min(480px, 86vw)",
         transformStyle: "preserve-3d",
         zIndex: position === "center" ? 30 : 10,
         pointerEvents: position === "hidden" ? "none" : undefined,
@@ -334,6 +344,25 @@ function ProjectCard({
 }
 
 // ---------------------------------------------------------------------------
+// Helpers: Circular Carousel Position Resolver
+// ---------------------------------------------------------------------------
+function getCardPosition(
+  idx: number,
+  activeIndex: number,
+  total: number
+): "center" | "left" | "right" | "hidden" {
+  if (total <= 0) return "hidden";
+  if (total === 1) return "center";
+  if (total === 2) return idx === activeIndex ? "center" : "right";
+
+  const diff = (idx - activeIndex + total) % total;
+  if (diff === 0) return "center";
+  if (diff === 1) return "right";
+  if (diff === total - 1) return "left";
+  return "hidden";
+}
+
+// ---------------------------------------------------------------------------
 // Main Projects Section Component
 // ---------------------------------------------------------------------------
 export function Projects() {
@@ -348,10 +377,6 @@ export function Projects() {
   // Admin modal state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-
-  // Track carousel card positions and wrap versions to eliminate cross-stage ghosting/overlapping
-  const prevPositionsRef = useRef<Record<string, "center" | "left" | "right" | "hidden">>({});
-  const wrapVersionsRef = useRef<Record<string, number>>({});
 
   // Filter projects by category
   const filteredProjects = projects.filter((p) => {
@@ -429,22 +454,6 @@ export function Projects() {
     setEditingProject(project);
     setDialogOpen(true);
   };
-
-  // Update previous positions to detect circular wrap on subsequent navigations
-  useEffect(() => {
-    const nextMap: Record<string, "center" | "left" | "right" | "hidden"> = {};
-    filteredProjects.forEach((p, idx) => {
-      let pos: "center" | "left" | "right" | "hidden" = "hidden";
-      if (idx === activeIndex) pos = "center";
-      else if (idx === activeIndex - 1 || (activeIndex === 0 && idx === filteredProjects.length - 1)) {
-        pos = "left";
-      } else if (idx === activeIndex + 1 || (activeIndex === filteredProjects.length - 1 && idx === 0)) {
-        pos = "right";
-      }
-      nextMap[p.id || p.slug] = pos;
-    });
-    prevPositionsRef.current = nextMap;
-  }, [activeIndex, filteredProjects]);
 
   return (
     <section
@@ -581,35 +590,20 @@ export function Projects() {
           >
             {filteredProjects.map((p, idx) => {
               const pKey = p.id || p.slug;
-              let pos: "center" | "left" | "right" | "hidden" = "hidden";
-              if (idx === activeIndex) pos = "center";
-              else if (idx === activeIndex - 1 || (activeIndex === 0 && idx === filteredProjects.length - 1)) {
-                pos = "left";
-              } else if (idx === activeIndex + 1 || (activeIndex === filteredProjects.length - 1 && idx === 0)) {
-                pos = "right";
-              }
-
-              const prevPos = prevPositionsRef.current[pKey];
-              const isWrap =
-                (prevPos === "left" && pos === "right") ||
-                (prevPos === "right" && pos === "left");
-
-              if (isWrap) {
-                wrapVersionsRef.current[pKey] = (wrapVersionsRef.current[pKey] || 0) + 1;
-              }
-              const wrapVer = wrapVersionsRef.current[pKey] || 0;
+              const pos = getCardPosition(idx, activeIndex, filteredProjects.length);
 
               return (
                 <ProjectCard
-                  key={`${pKey}-${wrapVer}`}
+                  key={pKey}
                   project={p}
                   isActive={idx === activeIndex}
                   position={pos}
-                  isWrapping={isWrap}
                   onClick={() => {
                     play("click");
                     setActiveIndex(idx);
                   }}
+                  onNext={handleNext}
+                  onPrev={handlePrev}
                   onViewDetails={(proj) => setSelectedProject(proj)}
                   onEdit={handleOpenEditDialog}
                   isAdmin={isAdmin}

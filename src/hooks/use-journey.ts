@@ -17,6 +17,13 @@ function getCachedJourney(): JourneyMilestone[] | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      // If legacy cache has fewer milestones than authentic bundled baseline and was not customized, purge stale cache
+      if (parsed.length < JOURNEY_MILESTONES.length && localStorage.getItem(CUSTOMIZED_KEY) !== "true") {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {}
+        return null;
+      }
       return parsed;
     }
   } catch (e) {
@@ -62,7 +69,7 @@ export function useJourney() {
 
       const serverData = await fetchJourneyFn();
 
-      if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+      if (serverData && Array.isArray(serverData) && serverData.length >= JOURNEY_MILESTONES.length) {
         if (isCustomizedLocally) {
           const cached = getCachedJourney();
           if (cached && cached.length > 0) {
@@ -81,7 +88,7 @@ export function useJourney() {
         saveCachedJourney(serverData, false);
       } else {
         const cached = getCachedJourney();
-        if (cached && cached.length > 0) {
+        if (cached && cached.length >= JOURNEY_MILESTONES.length) {
           setMilestones(cached);
         } else {
           setMilestones(JOURNEY_MILESTONES);

@@ -52,10 +52,15 @@ function ProjectCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const reducedMotion = typeof window !== "undefined" && prefersReducedMotion();
 
-  // Touch swipe tracking (replaces Framer Motion drag to avoid blocking button clicks)
+  // Touch swipe tracking: only if touch starts on card body, NOT on buttons/links
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // If touch starts on an interactive element (button or link), ignore swipe tracking
+    if ((e.target as HTMLElement)?.closest("button, a")) {
+      touchStartRef.current = null;
+      return;
+    }
     const touch = e.touches[0];
     if (touch) {
       touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
@@ -70,8 +75,8 @@ function ProjectCard({
     const dy = touch.clientY - touchStartRef.current.y;
     const dt = Date.now() - touchStartRef.current.time;
     touchStartRef.current = null;
-    // Only count horizontal swipes (not vertical scrolls)
-    if (Math.abs(dx) > Math.abs(dy) && (Math.abs(dx) > 50 || (Math.abs(dx) > 20 && dt < 300))) {
+    // Genuine swipe: predominantly horizontal, at least 60px distance within 500ms
+    if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 60 && dt < 500) {
       if (dx < 0) onNext?.();
       else onPrev?.();
     }
@@ -119,16 +124,14 @@ function ProjectCard({
           x: "0%",
           scale: 1,
           rotateY: 0,
-          z: 0,
           opacity: 1,
-          zIndex: 30,
+          zIndex: 40,
         };
       case "left":
         return {
           x: `-${sideX}`,
           scale: sideScale,
           rotateY: 18,
-          z: -120,
           opacity: 0.55,
           zIndex: 10,
         };
@@ -137,7 +140,6 @@ function ProjectCard({
           x: sideX,
           scale: sideScale,
           rotateY: -18,
-          z: -120,
           opacity: 0.55,
           zIndex: 10,
         };
@@ -146,7 +148,6 @@ function ProjectCard({
           x: "0%",
           scale: 0.6,
           rotateY: 0,
-          z: -260,
           opacity: 0,
           zIndex: 0,
         };
@@ -170,13 +171,12 @@ function ProjectCard({
       onTouchEnd={isActive ? handleTouchEnd : undefined}
       onPointerMove={isActive ? handlePointerMove : undefined}
       onPointerLeave={isActive ? handlePointerLeave : undefined}
-      className={`absolute top-0 select-none will-change-transform touch-pan-y [transform:translateZ(0)] ${
+      className={`absolute top-0 select-none will-change-transform touch-pan-y ${
         !isActive ? "cursor-pointer hover:opacity-85" : ""
       }`}
       style={{
         width: "min(480px, 86vw)",
-        transformStyle: "preserve-3d",
-        zIndex: position === "center" ? 30 : 10,
+        zIndex: position === "center" ? 40 : 10,
         pointerEvents: position === "hidden" ? "none" : "auto",
       }}
     >
@@ -292,6 +292,10 @@ function ProjectCard({
         {/* Footer Actions: View Project CTA & Links */}
         <div
           className="relative z-30 mt-5 flex items-center justify-between gap-3 pt-3.5 border-t border-white/10"
+          onPointerEnter={() => {
+            mouseX.set(0);
+            mouseY.set(0);
+          }}
         >
           <Button
             variant="hero"
@@ -303,8 +307,7 @@ function ProjectCard({
               play("click");
               onViewDetails(project);
             }}
-            onTouchEnd={(e) => e.stopPropagation()}
-            className="gap-2 text-xs sm:text-sm px-4 py-2"
+            className="gap-2 text-xs sm:text-sm px-4 py-2 cursor-pointer"
           >
             <Eye className="size-4" />
             View Project
@@ -320,9 +323,8 @@ function ProjectCard({
                   e.stopPropagation();
                   play("click");
                 }}
-                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="Open live demo"
-                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-cyan-400/60 transition-all"
+                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-cyan-400/60 transition-all cursor-pointer"
               >
                 <ExternalLink className="size-4" />
               </a>
@@ -337,9 +339,8 @@ function ProjectCard({
                   e.stopPropagation();
                   play("click");
                 }}
-                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="View source on GitHub"
-                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-primary-glow/60 transition-all"
+                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-primary-glow/60 transition-all cursor-pointer"
               >
                 <Github className="size-4" />
               </a>
@@ -353,9 +354,8 @@ function ProjectCard({
                   play("click");
                   onEdit(project);
                 }}
-                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="Edit project"
-                className="glass-pill px-2.5 py-1 rounded-full text-[0.70rem] font-semibold text-purple-300 border border-purple-500/30 hover:border-purple-400"
+                className="glass-pill px-2.5 py-1 rounded-full text-[0.70rem] font-semibold text-purple-300 border border-purple-500/30 hover:border-purple-400 cursor-pointer"
               >
                 Edit
               </button>

@@ -79,9 +79,9 @@ export function Journey() {
         {/* SECTION HEADER: Badge, Title & Visual Path Narrative          */}
         {/* ============================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 22 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
+          viewport={{ once: true, amount: 0.05 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-3xl mx-auto pb-12 sm:pb-16"
         >
@@ -160,9 +160,9 @@ export function Journey() {
               return (
                 <motion.div
                   key={milestone.id}
-                  initial={{ opacity: 0, y: 28 }}
+                  initial={reducedMotion ? false : { opacity: 0, y: 28 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
+                  viewport={{ once: true, amount: 0.05 }}
                   transition={{ duration: 0.7, delay: 0.08 * (idx % 3) }}
                   onMouseEnter={() => {
                     play("hover");

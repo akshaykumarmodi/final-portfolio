@@ -97,8 +97,8 @@ export function Journey() {
           </h2>
 
           {/* Subtitle */}
-          <p className="mt-3 font-sans text-xs sm:text-sm tracking-[0.32em] text-cyan-300/80 uppercase font-medium">
-            START → LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
+          <p className="mt-3 font-sans text-[0.65rem] sm:text-xs md:text-sm tracking-[0.2em] sm:tracking-[0.32em] text-cyan-300/80 uppercase font-medium max-w-full">
+            LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
           </p>
 
           <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">

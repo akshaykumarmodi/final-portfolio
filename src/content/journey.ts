@@ -29,10 +29,28 @@ export type JourneyMilestone = {
 
 /**
  * Authentic baseline milestones for Akshay Kumar Modi's journey.
- * Structured to represent: LEARNING → BUILDING → HACKATHONS → PROJECTS → GROWTH → FUTURE
- * Fully editable and persistable through the Admin Dashboard.
+ * Exactly 5 milestones starting with Pursuing B.Tech.
  */
 export const JOURNEY_MILESTONES: JourneyMilestone[] = [
+  {
+    id: "m-01-start",
+    slug: "the-beginning",
+    stage: "start",
+    title: "Pursuing B.Tech",
+    subtitle: "Newton School of Technology, Rishihood University",
+    description:
+      "Pursuing B.Tech in Computer Science & Artificial Intelligence. Built first algorithmic foundations and discovered the passion for turning logical code into creative digital experiences.",
+    year: "2024",
+    dateRange: "Aug 2024",
+    category: "Genesis",
+    iconName: "Compass",
+    status: "completed",
+    highlighted: false,
+    published: true,
+    sortOrder: 1,
+    tags: ["Algorithms", "Python", "Computer Science"],
+    imageUrl: "/assets/milestones/m2-learning.svg",
+  },
   {
     id: "m-02-learning",
     slug: "foundations-mastery",
@@ -48,7 +66,7 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     status: "completed",
     highlighted: false,
     published: true,
-    sortOrder: 1,
+    sortOrder: 2,
     tags: ["React", "TypeScript", "WebGL", "FastAPI"],
     imageUrl: "/assets/milestones/m2-learning.svg",
   },
@@ -67,7 +85,7 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     status: "completed",
     highlighted: false,
     published: true,
-    sortOrder: 2,
+    sortOrder: 3,
     tags: ["Three.js", "Shaders", "Framer Motion", "Web Audio"],
     imageUrl: "/assets/milestones/m3-building.svg",
   },
@@ -86,7 +104,7 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     status: "in-progress",
     highlighted: false,
     published: true,
-    sortOrder: 3,
+    sortOrder: 4,
     tags: ["Hackathons", "Rapid Shipping", "Team Leadership"],
     imageUrl: "/assets/milestones/m4-hackathons.svg",
   },
@@ -105,46 +123,8 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     status: "completed",
     highlighted: false,
     published: true,
-    sortOrder: 4,
+    sortOrder: 5,
     tags: ["TrustMesh", "Study Tutor AI", "Open Source"],
     imageUrl: "/assets/milestones/m5-projects.svg",
-  },
-  {
-    id: "m-06-growth",
-    slug: "applied-ai-growth",
-    stage: "growth",
-    title: "Applied AI & Scalability",
-    subtitle: "Autonomous Agents & Systems",
-    description:
-      "Refining agentic developer workflows, deep multi-turn context curation, performance optimization across cross-platform devices, and full-stack admin orchestration.",
-    year: "2026",
-    dateRange: "2026 — Active",
-    category: "Evolution",
-    iconName: "TrendingUp",
-    status: "in-progress",
-    highlighted: false,
-    published: true,
-    sortOrder: 5,
-    tags: ["Autonomous Agents", "Performance", "Full-Stack"],
-    imageUrl: "/assets/milestones/m6-growth.svg",
-  },
-  {
-    id: "m-07-future",
-    slug: "expanding-horizons",
-    stage: "future",
-    title: "Expanding Horizons & Beyond",
-    subtitle: "Building the Next Intelligent Web",
-    description:
-      "Dedicated to building impactful, accessible, human-centric software at the frontier of artificial intelligence, high-performance web graphics, and global open communities.",
-    year: "Next",
-    dateRange: "Future Vision",
-    category: "Horizon",
-    iconName: "Flame",
-    status: "upcoming",
-    highlighted: false,
-    published: true,
-    sortOrder: 6,
-    tags: ["Future Vision", "Global Impact", "AI Frontier"],
-    imageUrl: "/assets/milestones/m7-future.svg",
   },
 ];

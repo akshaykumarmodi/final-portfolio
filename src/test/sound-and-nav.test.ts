@@ -9,8 +9,9 @@ if (typeof window !== "undefined" && window.HTMLMediaElement) {
 }
 
 describe("SoundEngine", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    await sound.setEnabled(true);
   });
 
   it("defaults to true for automatic startup unless explicitly muted", () => {
@@ -71,7 +72,7 @@ describe("SoundEngine", () => {
     expect(localStorage.getItem("akm-sound")).not.toBe("off");
   });
 
-  it("reliably detects mobile phones and completely disables audio", async () => {
+  it("preserves autoplay attempt across desktop and mobile devices", async () => {
     const originalUA = navigator.userAgent;
     try {
       // Simulate iPhone
@@ -81,22 +82,11 @@ describe("SoundEngine", () => {
       });
 
       expect(sound.isMobile).toBe(true);
-      expect(sound.enabled).toBe(false);
-      expect(sound.isPlaying).toBe(false);
+      expect(sound.getStoredPreference()).toBe(true);
 
-      // Verify methods do nothing on mobile
+      // Verify autoStart attempts playback on mobile without blocking
       await sound.autoStart();
-      await sound.toggle();
-      expect(sound.isPlaying).toBe(false);
-      expect(() => sound.play("click")).not.toThrow();
-
-      // Simulate Android Mobile
-      Object.defineProperty(navigator, "userAgent", {
-        value: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-        configurable: true,
-      });
-      expect(sound.isMobile).toBe(true);
-      expect(sound.enabled).toBe(false);
+      expect(sound.enabled).toBe(true);
 
       // Simulate Desktop/Laptop (MacBook)
       Object.defineProperty(navigator, "userAgent", {
@@ -104,6 +94,7 @@ describe("SoundEngine", () => {
         configurable: true,
       });
       expect(sound.isMobile).toBe(false);
+      expect(sound.enabled).toBe(true);
     } finally {
       Object.defineProperty(navigator, "userAgent", {
         value: originalUA,

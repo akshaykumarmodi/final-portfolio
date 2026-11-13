@@ -66,10 +66,10 @@ class SoundEngine {
   private currentSourceIndex = 0;
 
   constructor() {
-    this._enabled = !this.isMobile && this.getStoredPreference();
+    this._enabled = this.getStoredPreference();
     this._isPlaying = false;
 
-    if (typeof window !== "undefined" && !this.isMobile) {
+    if (typeof window !== "undefined") {
       // 1. Initial attempt on DOM ready
       if (document.readyState === "complete" || document.readyState === "interactive") {
         void this.autoStart();
@@ -98,12 +98,11 @@ class SoundEngine {
   }
 
   get enabled(): boolean {
-    if (this.isMobile) return false;
     return this._enabled;
   }
 
   get isPlaying(): boolean {
-    if (this.isMobile || !this._enabled) return false;
+    if (!this._enabled) return false;
     if (this.audio && !this.audio.paused && !this.audio.muted && this.audio.volume > 0) {
       return true;
     }
@@ -133,7 +132,6 @@ class SoundEngine {
   }
 
   private ensureAudio(): HTMLAudioElement | null {
-    if (this.isMobile) return null;
     if (this.audio) return this.audio;
     if (typeof window === "undefined") return null;
 
@@ -232,7 +230,6 @@ class SoundEngine {
   }
 
   private registerUnlockListeners() {
-    if (this.isMobile) return;
     if (this._unlockRegistered) return;
     if (!this._enabled) return;
 
@@ -256,6 +253,8 @@ class SoundEngine {
       "mouseup",
       "click",
       "keydown",
+      "wheel",
+      "scroll"
     ];
 
     events.forEach((e) => {
@@ -278,7 +277,7 @@ class SoundEngine {
    * 3. Never silences or mutes audio on error.
    */
   private async safePlay(): Promise<boolean> {
-    if (this.isMobile || !this._enabled) return false;
+    if (!this._enabled) return false;
 
     // In unit test environments without real media, mock response
     if (
@@ -350,19 +349,18 @@ class SoundEngine {
    * Immediately activates audible sound if enabled.
    */
   public unlock() {
-    if (this.isMobile || !this._enabled) return;
+    if (!this._enabled) return;
     void this.safePlay();
   }
 
   async autoStart() {
-    if (this.isMobile || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
     if (!this._enabled) return;
 
     await this.safePlay();
   }
 
   async setEnabled(on: boolean) {
-    if (this.isMobile) return;
     if (on) {
       await this.turnOn();
     } else {
@@ -371,7 +369,6 @@ class SoundEngine {
   }
 
   async toggle() {
-    if (this.isMobile) return;
     // If actively playing, turn off. If not playing (paused by browser or disabled), turn on and play!
     if (this.isPlaying) {
       await this.turnOff();
@@ -381,7 +378,6 @@ class SoundEngine {
   }
 
   async turnOn() {
-    if (this.isMobile) return;
     this._enabled = true;
     try {
       if (typeof window !== "undefined") {
@@ -422,7 +418,6 @@ class SoundEngine {
   }
 
   play(_kind: "hover" | "click" | "success" = "click") {
-    if (this.isMobile) return;
     // When clicking any link or button, resume audio ONLY if it was unexpectedly paused
     if (this._enabled && this.audio && this.audio.paused) {
       void this.safePlay();

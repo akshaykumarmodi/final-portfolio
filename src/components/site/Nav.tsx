@@ -42,7 +42,7 @@ export function Nav() {
   const targetId = hoveredId || active;
 
   const [open, setOpen] = useState(false);
-  const { enabled, isPlaying, toggle, play, isMobile } = useSound();
+  const { enabled, isPlaying, toggle, play } = useSound();
   const [isVisible, setIsVisible] = useState(true);
 
   const headerRef = useRef<HTMLElement>(null);
@@ -262,26 +262,24 @@ export function Nav() {
             />
           </nav>
 
-          {/* Right: Sound On/Off (Desktop/Laptop only), Profile/Admin, Mobile Menu Toggle */}
+          {/* Right: Sound On/Off, Profile/Admin, Mobile Menu Toggle */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 justify-self-end">
-            {!isMobile && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggle();
-                }}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                }}
-                aria-pressed={isPlaying}
-                aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
-                className="glass-pill glow-border flex h-9 sm:h-10 md:h-11 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3.5 md:px-4 text-xs sm:text-sm md:text-[0.95rem] font-medium text-foreground transition-all duration-200 hover:scale-105 hover:border-primary-glow/60 cursor-pointer"
-              >
-                <span className="hidden sm:inline">Sound {isPlaying ? "On" : "Off"}</span>
-                <SoundWaves on={isPlaying} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              aria-pressed={isPlaying}
+              aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
+              className="glass-pill glow-border flex h-9 sm:h-10 md:h-11 items-center justify-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3.5 md:px-4 text-xs sm:text-sm md:text-[0.95rem] font-medium text-foreground transition-all duration-200 hover:scale-105 hover:border-primary-glow/60 cursor-pointer"
+            >
+              <span className="hidden sm:inline">Sound {isPlaying ? "On" : "Off"}</span>
+              <SoundWaves on={isPlaying} />
+            </button>
 
             <Link
               to="/admin"

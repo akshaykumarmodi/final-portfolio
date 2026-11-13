@@ -159,28 +159,64 @@ function RootShell({ children }: { children: ReactNode }) {
                     }
                   } catch(e){}
 
-                  try {
-                    if ('audioSession' in navigator) {
-                      navigator.audioSession.type = 'playback';
-                    }
-                  } catch(e){}
+                  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                    (navigator.maxTouchPoints > 0 && /Macintosh|Mobile|Tablet/i.test(navigator.userAgent)) ||
+                    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
-                  try { a.volume = 0.75; } catch(e){}
                   a.muted = false;
+                  try { a.volume = 0.75; } catch(e){}
 
-                  var actx = null;
-                  function primeAudioHardware() {
+                  if ('audioSession' in navigator) {
                     try {
-                      if ('audioSession' in navigator) {
-                        navigator.audioSession.type = 'playback';
-                      }
+                      navigator.audioSession.type = 'playback';
                     } catch(e){}
+                  }
+
+                  var isPlaying = false;
+                  var unlockBound = false;
+
+                  // -------------------------------------------------------------
+                  // DESKTOP: Preserve exact desktop audio behavior completely
+                  // -------------------------------------------------------------
+                  if (!isMobile) {
+                    var p = a.play();
+                    if (p !== undefined && typeof p.then === 'function') {
+                      p.then(function() {
+                        isPlaying = true;
+                      }).catch(function() {
+                        function onDesktopGesture() {
+                          ['click', 'keydown', 'pointerdown', 'mousedown'].forEach(function(ev) {
+                            window.removeEventListener(ev, onDesktopGesture, true);
+                            document.removeEventListener(ev, onDesktopGesture, true);
+                          });
+                          a.muted = false;
+                          try { a.volume = 0.75; } catch(e){}
+                          a.play().catch(function(){});
+                        }
+                        ['click', 'keydown', 'pointerdown', 'mousedown'].forEach(function(ev) {
+                          window.addEventListener(ev, onDesktopGesture, { capture: true, once: true, passive: true });
+                          document.addEventListener(ev, onDesktopGesture, { capture: true, once: true, passive: true });
+                        });
+                      });
+                    }
+                    return;
+                  }
+
+                  // -------------------------------------------------------------
+                  // MOBILE-ONLY: iPhone Safari, iPhone Chrome, Android Chrome
+                  // -------------------------------------------------------------
+                  function primeMobileAudioHardware() {
+                    if ('audioSession' in navigator) {
+                      try {
+                        navigator.audioSession.type = 'playback';
+                      } catch(e){}
+                    }
                     try {
                       var AC = window.AudioContext || window.webkitAudioContext;
                       if (AC) {
-                        actx = window.__akm_actx = window.__akm_actx || new AC();
+                        var actx = window.__akm_actx = window.__akm_actx || new AC();
                         if (actx.state === 'suspended') {
-                          actx.resume().catch(function() {});
+                          actx.resume().catch(function(){});
                         }
                         var buf = actx.createBuffer(1, 1, 22050);
                         var src = actx.createBufferSource();
@@ -191,12 +227,15 @@ function RootShell({ children }: { children: ReactNode }) {
                     } catch(e){}
                   }
 
-                  var isPlaying = false;
-
-                  function startSound() {
+                  function tryMobilePlay() {
                     if (!a || isPlaying) return;
-                    primeAudioHardware();
+                    if (!a.paused && a.currentTime > 0) {
+                      isPlaying = true;
+                      cleanupMobileListeners();
+                      return;
+                    }
 
+                    primeMobileAudioHardware();
                     a.muted = false;
                     try { a.volume = 0.75; } catch(e){}
 
@@ -204,67 +243,66 @@ function RootShell({ children }: { children: ReactNode }) {
                     if (p !== undefined && typeof p.then === 'function') {
                       p.then(function() {
                         isPlaying = true;
-                        removeListeners();
+                        cleanupMobileListeners();
                       }).catch(function() {
-                        // Autoplay policy waiting for user gesture on mobile
+                        // Awaiting user gesture
                       });
                     } else if (!a.paused) {
                       isPlaying = true;
-                      removeListeners();
+                      cleanupMobileListeners();
                     }
                   }
 
-                  // 1. Direct unmuted autoplay on initial website entry
-                  startSound();
+                  // 1. Attempt mobile autoplay on site open
+                  tryMobilePlay();
+                  window.addEventListener('DOMContentLoaded', tryMobilePlay, { once: true });
+                  window.addEventListener('load', tryMobilePlay, { once: true });
+                  window.addEventListener('pageshow', tryMobilePlay, { once: true });
 
-                  // 2. Lifecycle triggers across all browsers
-                  window.addEventListener('DOMContentLoaded', startSound, { once: true });
-                  window.addEventListener('load', startSound, { once: true });
-                  window.addEventListener('pageshow', startSound, { once: true });
+                  // 2. Mobile first-interaction unlock (touchstart, pointerdown, touchend, pointerup, click)
+                  // Ensures playback starts on the very first touch without waiting for a second tap
+                  var mobileEvents = ['touchstart', 'pointerdown', 'touchend', 'pointerup', 'click'];
 
-                  // 3. User interaction triggers for mobile touch, tap, click, key
-                  var gestureEvents = [
-                    'touchend',
-                    'pointerup',
-                    'click',
-                    'touchstart',
-                    'pointerdown',
-                    'keydown',
-                    'keyup'
-                  ];
-
-                  function onGesture() {
-                    startSound();
+                  function onMobileFirstInteraction() {
+                    tryMobilePlay();
                   }
 
-                  function removeListeners() {
-                    gestureEvents.forEach(function(ev) {
-                      window.removeEventListener(ev, onGesture, true);
-                      document.removeEventListener(ev, onGesture, true);
+                  function cleanupMobileListeners() {
+                    if (!unlockBound) return;
+                    unlockBound = false;
+                    mobileEvents.forEach(function(ev) {
+                      window.removeEventListener(ev, onMobileFirstInteraction, true);
+                      document.removeEventListener(ev, onMobileFirstInteraction, true);
                       if (document.body) {
-                        document.body.removeEventListener(ev, onGesture, true);
+                        document.body.removeEventListener(ev, onMobileFirstInteraction, true);
                       }
                     });
                   }
 
-                  gestureEvents.forEach(function(ev) {
-                    window.addEventListener(ev, onGesture, { capture: true, passive: true });
-                    document.addEventListener(ev, onGesture, { capture: true, passive: true });
+                  unlockBound = true;
+                  mobileEvents.forEach(function(ev) {
+                    window.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
+                    document.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
                   });
 
                   if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', function() {
-                      if (document.body) {
-                        gestureEvents.forEach(function(ev) {
-                          document.body.addEventListener(ev, onGesture, { capture: true, passive: true });
+                      if (document.body && unlockBound && !isPlaying) {
+                        mobileEvents.forEach(function(ev) {
+                          document.body.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
                         });
                       }
                     }, { once: true });
-                  } else if (document.body) {
-                    gestureEvents.forEach(function(ev) {
-                      document.body.addEventListener(ev, onGesture, { capture: true, passive: true });
+                  } else if (document.body && unlockBound && !isPlaying) {
+                    mobileEvents.forEach(function(ev) {
+                      document.body.addEventListener(ev, onMobileFirstInteraction, { capture: true, passive: true });
                     });
                   }
+
+                  a.addEventListener('playing', function() {
+                    isPlaying = true;
+                    cleanupMobileListeners();
+                  }, { once: true });
                 } catch(e){}
               })();
             `,

@@ -164,7 +164,7 @@ export function Hero() {
               Hello, I'm
             </motion.div>
 
-            <h1 className="mt-7 text-[clamp(3.1rem,6.4vw,7.2rem)] font-medium leading-[0.92] text-foreground">
+            <h1 className="mt-5 sm:mt-7 text-[clamp(2.35rem,6.4vw,7.2rem)] font-medium leading-[0.94] text-foreground">
               <RevealWords text="Akshay Kumar" delay={0.25} reduced={reduced} />
               <br />
               <RevealWords text="Modi." delay={0.52} className="text-gradient-violet" reduced={reduced} />
@@ -174,9 +174,9 @@ export function Hero() {
               initial={reduced ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: reduced ? 0 : 0.7, ease }}
-              className="mt-8"
+              className="mt-6 sm:mt-8"
             >
-              <p className="whitespace-nowrap font-sans text-[0.78rem] font-semibold tracking-[0.42em] text-foreground sm:text-[0.92rem]">
+              <p className="font-sans text-[0.60rem] min-[360px]:text-[0.66rem] min-[390px]:text-[0.74rem] sm:text-[0.92rem] font-semibold tracking-[0.18em] min-[360px]:tracking-[0.24em] min-[390px]:tracking-[0.32em] sm:tracking-[0.42em] text-foreground uppercase max-w-full">
                 DESIGNING . DEVELOPING . CREATING .
               </p>
             </motion.div>
@@ -185,7 +185,7 @@ export function Hero() {
               initial={reduced ? false : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.95, delay: reduced ? 0 : 0.85, ease }}
-              className="mt-7 max-w-[34rem] text-[1.06rem] leading-relaxed text-foreground/90 sm:text-[1.15rem]"
+              className="mt-5 sm:mt-7 max-w-[34rem] text-sm sm:text-[1.06rem] lg:text-[1.15rem] leading-relaxed text-foreground/90"
             >
               I build end-to-end digital experiences, explore emerging technologies, and turn ideas into reality. Focused on full-stack engineering, creative development, and applied AI.
             </motion.p>
@@ -194,7 +194,7 @@ export function Hero() {
               initial={reduced ? false : { opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.0, delay: reduced ? 0 : 1.0, ease }}
-              className="mt-10 flex flex-wrap items-center gap-4 sm:gap-6"
+              className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-6"
             >
               <Button
                 variant="hero"
@@ -204,6 +204,7 @@ export function Hero() {
                   play("click");
                   scrollToSection("projects");
                 }}
+                className="w-full sm:w-auto justify-between"
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary-foreground/25 to-transparent transition-transform duration-1000 ease-[var(--ease-cinematic)] group-hover:translate-x-full" />
                 Explore My Work
@@ -219,6 +220,7 @@ export function Hero() {
                   play("click");
                   scrollToSection("contact");
                 }}
+                className="w-full sm:w-auto justify-between"
               >
                 Let's Connect
                 <span className="grid size-10 place-items-center rounded-full border border-glass-border transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:rotate-12">

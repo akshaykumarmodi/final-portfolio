@@ -35,10 +35,20 @@ class SoundEngine {
   private currentSourceIndex = 0;
 
   constructor() {
-    this._enabled = this.getStoredPreference();
+    // Sound is always enabled by default whenever the website is opened
+    this._enabled = true;
     this._isPlaying = false;
 
     if (typeof window !== "undefined") {
+      // Clear any legacy 'off' preference so sound is always ON by default when opening website
+      try {
+        if (localStorage.getItem(STORAGE_KEY) === "off") {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        /* ignore */
+      }
+
       // 1. Initial attempt on DOM ready
       if (document.readyState === "complete" || document.readyState === "interactive") {
         void this.autoStart();
@@ -47,7 +57,10 @@ class SoundEngine {
         window.addEventListener("load", () => void this.autoStart(), { once: true });
       }
 
-      // 2. Seamlessly resume if browser paused audio when user switched tabs (e.g. clicked Live Demo or GitHub)
+      // Also register natural interaction listeners immediately so mouse move, scroll, or touch starts sound without click
+      this.registerUnlockListeners();
+
+      // 2. Seamlessly resume if browser paused audio when user switched tabs
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && this._enabled && this.audio && this.audio.paused) {
           void this.safePlay();
@@ -75,14 +88,7 @@ class SoundEngine {
   }
 
   getStoredPreference(): boolean {
-    if (typeof window === "undefined") return true;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === "off") return false;
-      return true;
-    } catch {
-      return true;
-    }
+    return true;
   }
 
   subscribe(fn: Listener) {
@@ -125,6 +131,7 @@ class SoundEngine {
 
       audio.preload = "auto";
       audio.loop = true;
+      audio.autoplay = true;
       (audio as unknown as { playsInline?: boolean }).playsInline = true;
 
       if (!audio.paused && !audio.muted && audio.volume > 0) {
@@ -207,25 +214,34 @@ class SoundEngine {
       void this.safePlay();
     };
 
-    // Authentic user activation triggers per W3C specification
+    // Natural visitor interactions to immediately start sound without requiring a button click
     const events = [
       "pointerdown",
       "pointerup",
+      "pointermove",
       "touchstart",
       "touchend",
+      "touchmove",
       "mousedown",
       "mouseup",
+      "mousemove",
       "click",
       "keydown",
+      "wheel",
+      "scroll",
+      "mouseenter",
+      "focus",
     ];
 
     events.forEach((e) => {
       window.addEventListener(e, unlockHandler, { capture: true, passive: true });
+      document.addEventListener(e, unlockHandler, { capture: true, passive: true });
     });
 
     this.unlockCleanup = () => {
       events.forEach((e) => {
         window.removeEventListener(e, unlockHandler, { capture: true });
+        document.removeEventListener(e, unlockHandler, { capture: true });
       });
       this._unlockRegistered = false;
     };

@@ -66,17 +66,20 @@ export function Nav() {
         const left = targetEl.offsetLeft + 10;
         const width = Math.max(0, targetEl.offsetWidth - 20);
         const top = targetEl.offsetTop + targetEl.offsetHeight - 2;
-        setIndicator({ left, top, width, ready: true });
+        setIndicator((prev) => {
+          if (prev.left === left && prev.top === top && prev.width === width && prev.ready) {
+            return prev;
+          }
+          return { left, top, width, ready: true };
+        });
       }
     };
 
     updateIndicator();
-    const rafId = requestAnimationFrame(updateIndicator);
     document.fonts?.ready?.then(updateIndicator);
     window.addEventListener("resize", updateIndicator);
     window.addEventListener("orientationchange", updateIndicator);
     return () => {
-      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", updateIndicator);
       window.removeEventListener("orientationchange", updateIndicator);
     };
@@ -104,12 +107,13 @@ export function Nav() {
         const homeEl = document.getElementById("home");
         if (homeEl) {
           const homeTop = homeEl.getBoundingClientRect().top;
-          setIsVisible(homeTop <= 80);
+          const nextVisible = homeTop <= 80;
+          setIsVisible((prev) => (prev !== nextVisible ? nextVisible : prev));
         } else {
-          setIsVisible(true);
+          setIsVisible((prev) => (prev !== true ? true : prev));
         }
       } else {
-        setIsVisible(true);
+        setIsVisible((prev) => (prev !== true ? true : prev));
       }
 
       const sectionIds = ["contact", "journey", "projects", "about"];
@@ -118,12 +122,12 @@ export function Nav() {
         if (el) {
           const rect = el.getBoundingClientRect();
           if (rect.top <= 160) {
-            setActive(id);
+            setActive((prev) => (prev !== id ? id : prev));
             return;
           }
         }
       }
-      setActive("home");
+      setActive((prev) => (prev !== "home" ? "home" : prev));
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });

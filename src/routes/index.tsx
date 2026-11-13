@@ -111,7 +111,7 @@ function Index() {
 
   return (
     <main className="relative">
-      {hasEnteredPortfolio && <Nav />}
+      <Nav />
       {/* 00 — SCROLL-DRIVEN CINEMATIC INTRO */}
       <ScrollCinematicIntro onEnterPortfolio={() => setHasEnteredPortfolio(true)} />
 

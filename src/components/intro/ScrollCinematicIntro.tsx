@@ -235,6 +235,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
             if (!rafId) rafId = requestAnimationFrame(render);
           } else if (!nextVisible && isVisible) {
             isVisible = false;
+            cancelAnimationFrame(rafId);
+            rafId = 0;
           }
         },
         { threshold: 0 },

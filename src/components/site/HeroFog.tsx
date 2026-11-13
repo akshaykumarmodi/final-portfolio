@@ -301,12 +301,13 @@ export function HeroFog() {
       rafId = requestAnimationFrame(render);
     };
 
-    const updateSize = () => {
-      const rect = container.getBoundingClientRect();
+    const updateSize = (rectW?: number, rectH?: number) => {
+      const containerW = rectW || container.clientWidth || window.innerWidth || 1280;
+      const containerH = rectH || container.clientHeight || window.innerHeight || 720;
       // Cap render buffer dimension to max 1280px for rock-solid full-screen GPU frame pacing
-      const scale = Math.min(1, 1280 / Math.max(rect.width, 1));
-      const w = Math.max(Math.floor(rect.width * scale), 1);
-      const h = Math.max(Math.floor(rect.height * scale), 1);
+      const scale = Math.min(1, 1280 / Math.max(containerW, 1));
+      const w = Math.max(Math.floor(containerW * scale), 1);
+      const h = Math.max(Math.floor(containerH * scale), 1);
 
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
@@ -319,23 +320,33 @@ export function HeroFog() {
 
     updateSize();
 
-    const ro = new ResizeObserver(() => {
-      updateSize();
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry?.contentRect) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          updateSize(width, height);
+        }
+      }
     });
     ro.observe(container);
 
-    // Pause rendering when offscreen to preserve 60fps GPU performance and smooth scrolling
+    // Pause rendering when offscreen with a 150px margin for seamless transition handoffs
     const io = new IntersectionObserver(
       ([entry]) => {
         const nextVisible = entry ? entry.isIntersecting : true;
         if (nextVisible && !isVisible) {
           isVisible = true;
-          render(performance.now());
+          if (!rafId) {
+            rafId = requestAnimationFrame(render);
+          }
         } else if (!nextVisible && isVisible) {
           isVisible = false;
+          cancelAnimationFrame(rafId);
+          rafId = 0;
         }
       },
-      { threshold: 0.01 },
+      { threshold: 0, rootMargin: "150px 0px" },
     );
     io.observe(container);
 

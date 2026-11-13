@@ -332,8 +332,7 @@ class SoundEngine {
   }
 
   async toggle() {
-    // If actively playing, turn off. If not playing (paused by browser or disabled), turn on and play!
-    if (this.isPlaying) {
+    if (this._enabled) {
       await this.turnOff();
     } else {
       await this.turnOn();
@@ -344,7 +343,6 @@ class SoundEngine {
     this._enabled = true;
     try {
       if (typeof window !== "undefined") {
-        localStorage.removeItem(STORAGE_KEY);
         localStorage.setItem(STORAGE_KEY, "on");
       }
     } catch {

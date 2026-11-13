@@ -48,10 +48,6 @@ export function SmoothScroll() {
 
           lenisRef.current = instance;
           setLenis(instance);
-
-          instance.on("scroll", () => {
-            import("@/lib/sound").then(({ sound }) => sound.unlock()).catch(() => {});
-          });
         })
         .catch(() => {});
     }

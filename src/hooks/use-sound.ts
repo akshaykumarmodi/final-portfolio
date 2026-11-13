@@ -15,9 +15,6 @@ export function useSound() {
       : () => {};
     setEnabled(sound.enabled ?? true);
     setIsPlaying(sound.isPlaying ?? false);
-    if (typeof sound.getStoredPreference === "function" && sound.getStoredPreference() && !sound.isPlaying) {
-      void sound.autoStart?.();
-    }
     return unsub;
   }, []);
 

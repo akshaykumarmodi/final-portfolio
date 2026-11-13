@@ -33,7 +33,6 @@ export function SmoothScroll() {
       import("lenis")
         .then(({ default: Lenis }) => {
           if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) return;
-          const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
@@ -43,8 +42,7 @@ export function SmoothScroll() {
             gestureOrientation: "vertical",
             smoothWheel: true,
             wheelMultiplier: 1.15,
-            touchMultiplier: isTouch ? 0 : 1.0,
-            syncTouch: true,
+            touchMultiplier: 1.5,
             infinite: false,
           });
 

@@ -74,13 +74,12 @@ function SiteFooter() {
 }
 
 function Index() {
-  const [hasEnteredPortfolio, setHasEnteredPortfolio] = useState(false);
+  const [hasEnteredPortfolio, setHasEnteredPortfolio] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(window.location.hash && window.location.hash !== "#intro");
+  });
 
   useEffect(() => {
-    if (window.location.hash && window.location.hash !== "#intro") {
-      setHasEnteredPortfolio(true);
-    }
-
     const onScroll = () => {
       const homeEl = document.getElementById("home");
       if (homeEl) {
@@ -111,7 +110,7 @@ function Index() {
   }, []);
 
   return (
-    <main className="relative w-full bg-[#0b0816] overflow-x-clip">
+    <main className="relative">
       {hasEnteredPortfolio && <Nav />}
       {/* 00 — SCROLL-DRIVEN CINEMATIC INTRO */}
       <ScrollCinematicIntro onEnterPortfolio={() => setHasEnteredPortfolio(true)} />

@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { prefersReducedMotion, hasWebGL } from "@/lib/scroll";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useEffect, useRef } from "react";
+import { prefersReducedMotion } from "@/lib/scroll";
 
 const VERTEX_SHADER = /* glsl */ `
 attribute vec2 position;
@@ -201,70 +200,39 @@ function createShader(gl: WebGLRenderingContext, type: number, source: string): 
 export function HeroFog() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
-  const [useFallback, setUseFallback] = useState(false);
 
   useEffect(() => {
-    // On mobile devices or when WebGL is unsupported, use the lightweight CSS atmospheric fog
-    if (isMobile || !hasWebGL() || (typeof window !== "undefined" && window.innerWidth < 768)) {
-      setUseFallback(true);
-      return;
-    }
-
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null;
-    try {
-      gl =
-        canvas.getContext("webgl2", {
-          alpha: true,
-          premultipliedAlpha: true,
-          preserveDrawingBuffer: true,
-          powerPreference: "high-performance",
-        }) ||
-        (canvas.getContext("webgl", {
-          alpha: true,
-          premultipliedAlpha: true,
-          preserveDrawingBuffer: true,
-        }) as WebGLRenderingContext | null);
-    } catch {
-      setUseFallback(true);
-      return;
-    }
+    const gl =
+      canvas.getContext("webgl2", {
+        alpha: true,
+        premultipliedAlpha: true,
+        preserveDrawingBuffer: true,
+        powerPreference: "high-performance",
+      }) ||
+      (canvas.getContext("webgl", {
+        alpha: true,
+        premultipliedAlpha: true,
+        preserveDrawingBuffer: true,
+      }) as WebGLRenderingContext | null);
 
-    if (!gl) {
-      setUseFallback(true);
-      return;
-    }
-
-    // Gracefully handle WebGL context lost on mobile/high load
-    const onContextLost = (e: Event) => {
-      e.preventDefault();
-      setUseFallback(true);
-    };
-    canvas.addEventListener("webglcontextlost", onContextLost, false);
+    if (!gl) return;
 
     const vert = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
     const frag = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    if (!vert || !frag) {
-      setUseFallback(true);
-      return;
-    }
+    if (!vert || !frag) return;
 
     const program = gl.createProgram();
-    if (!program) {
-      setUseFallback(true);
-      return;
-    }
+    if (!program) return;
     gl.attachShader(program, vert);
     gl.attachShader(program, frag);
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.warn("Shader program link fallback:", gl.getProgramInfoLog(program));
-      setUseFallback(true);
+      console.error("Program link error:", gl.getProgramInfoLog(program));
       return;
     }
 
@@ -312,7 +280,7 @@ export function HeroFog() {
     const startTime = performance.now();
 
     const render = (now: number) => {
-      if (!isVisible || !gl) {
+      if (!isVisible) {
         rafId = 0;
         return;
       }
@@ -334,7 +302,6 @@ export function HeroFog() {
     };
 
     const updateSize = () => {
-      if (!canvas || !gl) return;
       const rect = container.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 1);
       const w = Math.max(Math.floor(rect.width * dpr), 1);
@@ -376,41 +343,25 @@ export function HeroFog() {
 
     return () => {
       cancelAnimationFrame(rafId);
-      canvas.removeEventListener("webglcontextlost", onContextLost);
       ro.disconnect();
       io.disconnect();
       if (!reduced) {
         window.removeEventListener("pointermove", onPointerMove);
       }
-      if (gl) {
-        gl.deleteBuffer(buffer);
-        gl.deleteProgram(program);
-        gl.deleteShader(vert);
-        gl.deleteShader(frag);
-      }
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vert);
+      gl.deleteShader(frag);
     };
-  }, [isMobile]);
+  }, []);
 
   return (
     <div
       ref={containerRef}
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 h-full w-full overflow-hidden select-none"
+      className="pointer-events-none absolute inset-0 -z-10 h-full w-full overflow-hidden"
     >
-      {/* Aurora atmosphere base */}
-      <div
-        className="absolute inset-0 h-full w-full opacity-70 transition-opacity duration-700"
-        style={{
-          background: `
-            radial-gradient(ellipse 90% 55% at 50% 0%, rgba(168, 85, 247, 0.30), transparent 70%),
-            radial-gradient(ellipse 65% 45% at 85% 65%, rgba(6, 182, 212, 0.22), transparent 70%),
-            radial-gradient(ellipse 70% 45% at 15% 85%, rgba(147, 51, 234, 0.25), transparent 70%)
-          `,
-        }}
-      />
-      {!useFallback && !isMobile && (
-        <canvas ref={canvasRef} className="block h-full w-full" />
-      )}
+      <canvas ref={canvasRef} className="block h-full w-full" />
     </div>
   );
 }

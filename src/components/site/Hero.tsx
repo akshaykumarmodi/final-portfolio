@@ -1,4 +1,4 @@
-import { Component, ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, Send } from "lucide-react";
 import heroBg from "@/assets/hero-bg.webp";
@@ -10,20 +10,6 @@ import { PORTRAIT_ASPECT, PORTRAIT_BOTTOM, PORTRAIT_MAX_H, PORTRAIT_MAX_W, PORTR
 import { cn } from "@/lib/utils";
 import { HeroFog } from "./HeroFog";
 import HeroScene from "@/components/three/HeroScene";
-
-class SafeHeroScene extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  override state = { hasError: false };
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  override componentDidCatch(err: unknown) {
-    console.warn("Hero 3D WebGL scene error, falling back to static portrait:", err);
-  }
-  override render() {
-    if (this.state.hasError) return null;
-    return this.props.children;
-  }
-}
 
 // Preload and eagerly decode portrait image in memory as early as possible
 if (typeof window !== "undefined") {
@@ -72,20 +58,14 @@ function RevealWords({
 export function Hero() {
   const { play } = useSound();
   const sectionRef = useRef<HTMLElement>(null);
-  const [isWebGL, setIsWebGL] = useState(false);
-  const [reduced, setReduced] = useState(false);
+  const [isWebGL] = useState(() => typeof window === "undefined" || hasWebGL());
+  const [reduced] = useState(() => typeof window !== "undefined" && prefersReducedMotion());
   const [visible, setVisible] = useState(true);
   const [sceneReady, setSceneReady] = useState(false);
   const [isInitialMount] = useState(() => !hasHeroMountedOnce);
 
   useEffect(() => {
     hasHeroMountedOnce = true;
-    if (hasWebGL() && window.innerWidth >= 768) {
-      setIsWebGL(true);
-    }
-    if (prefersReducedMotion()) {
-      setReduced(true);
-    }
   }, []);
 
   useEffect(() => {
@@ -111,7 +91,7 @@ export function Hero() {
     <section
       id="home"
       ref={sectionRef}
-      className="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#0b0816] noise-overlay lg:h-[100svh] lg:min-h-[44rem]"
+      className="relative isolate flex min-h-[100svh] flex-col overflow-hidden noise-overlay lg:h-[100svh] lg:min-h-[44rem]"
     >
       {/* Background world: continuous with About, Projects & Journey */}
       <div
@@ -151,15 +131,13 @@ export function Hero() {
           {/* Interactive 3D WebGL layer overlay (when WebGL is supported) */}
           {isWebGL && (
             <div className="absolute inset-0">
-              <SafeHeroScene>
-                <Suspense fallback={null}>
-                  <HeroScene
-                    active={visible}
-                    reduced={reduced}
-                    onReady={() => setSceneReady(true)}
-                  />
-                </Suspense>
-              </SafeHeroScene>
+              <Suspense fallback={null}>
+                <HeroScene
+                  active={visible}
+                  reduced={reduced}
+                  onReady={() => setSceneReady(true)}
+                />
+              </Suspense>
             </div>
           )}
         </motion.div>
@@ -186,7 +164,7 @@ export function Hero() {
               Hello, I'm
             </motion.div>
 
-            <h1 className="mt-5 sm:mt-7 text-[clamp(2.05rem,6.4vw,7.2rem)] font-medium leading-[0.94] text-foreground">
+            <h1 className="mt-5 sm:mt-7 text-[clamp(2.35rem,6.4vw,7.2rem)] font-medium leading-[0.94] text-foreground">
               <RevealWords text="Akshay Kumar" delay={0.25} reduced={reduced} />
               <br />
               <RevealWords text="Modi." delay={0.52} className="text-gradient-violet" reduced={reduced} />

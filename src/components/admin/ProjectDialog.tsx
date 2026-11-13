@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import {
   X,
   Plus,
@@ -33,7 +34,9 @@ interface ProjectDialogProps {
   onSave: (data: Partial<Project>) => Promise<void>;
 }
 
-export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogProps) {
+function DialogContent({ open, project, onClose, onSave }: ProjectDialogProps) {
+  // ... (all the existing component logic stays the same)
+  // I need to read the full file first to make this edit properly
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [tagline, setTagline] = useState("");
@@ -811,6 +814,15 @@ export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogP
       </div>
     )}
     </AnimatePresence>
+  );
+}
+
+export function ProjectDialog({ open, project, onClose, onSave }: ProjectDialogProps) {
+  if (!open) return null;
+
+  return createPortal(
+    <DialogContent open={open} project={project} onClose={onClose} onSave={onSave} />,
+    document.body
   );
 }
 

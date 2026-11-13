@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { X, ExternalLink, Github, Sparkles, Layers, ArrowLeft } from "lucide-react";
 import type { Project } from "@/content/projects";
 import { useSound } from "@/hooks/use-sound";
@@ -10,13 +11,8 @@ interface ProjectModalProps {
   onClose: () => void;
 }
 
-export function ProjectModal({ project, onClose }: ProjectModalProps) {
+function ModalContent({ project, onClose, handleClose }: { project: Project; onClose: () => void; handleClose: () => void }) {
   const { play } = useSound();
-
-  const handleClose = useCallback(() => {
-    play("click");
-    onClose();
-  }, [play, onClose]);
 
   // Handle Escape key to close
   useEffect(() => {
@@ -25,20 +21,17 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
         handleClose();
       }
     };
-    if (project) {
-      window.addEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "hidden";
-    }
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = "";
     };
-  }, [project, handleClose]);
+  }, [handleClose]);
 
   return (
     <AnimatePresence>
-      {project && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 md:p-8">
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 md:p-8">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -166,41 +159,31 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-white/10">
             <div className="flex flex-wrap items-center gap-3">
               {project.liveUrl && (
-                <Button
-                  variant="hero"
-                  size="lg"
-                  onClick={() => {
-                    play("click");
-                    try {
-                      window.open(project.liveUrl, "_blank", "noopener,noreferrer");
-                    } catch {
-                      window.location.href = project.liveUrl;
-                    }
-                  }}
-                  className="gap-2 text-sm sm:text-base"
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => play("click")}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[image:var(--gradient-cta)] px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-[var(--shadow-glow)] transition-[transform,box-shadow] duration-500 ease-[var(--ease-cinematic)] hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--primary-glow),0_18px_60px_-10px_var(--primary)]"
                 >
                   <ExternalLink className="size-4" />
                   Live Preview
-                </Button>
+                </a>
               )}
 
               {project.githubUrl && (
-                <Button
-                  variant="glass"
-                  size="lg"
-                  onClick={() => {
-                    play("click");
-                    try {
-                      window.open(project.githubUrl, "_blank", "noopener,noreferrer");
-                    } catch {
-                      window.location.href = project.githubUrl;
-                    }
-                  }}
-                  className="gap-2 text-sm sm:text-base border-white/20 hover:border-cyan-400/60"
+                <a
+                  href={project.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => play("click")}
+                  className="group relative rounded-full glass-pill px-5 py-2.5 text-sm font-medium text-foreground transition-[transform,background-color,border-color] duration-500 ease-[var(--ease-cinematic)] hover:-translate-y-0.5 hover:border-primary-glow/50 hover:bg-primary/10"
                 >
-                  <Github className="size-4" />
-                  GitHub Source
-                </Button>
+                  <span className="inline-flex items-center gap-2">
+                    <Github className="size-4" />
+                    GitHub Source
+                  </span>
+                </a>
               )}
             </div>
 
@@ -214,8 +197,23 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
           </div>
         </motion.div>
       </div>
-    )}
     </AnimatePresence>
+  );
+}
+
+export function ProjectModal({ project, onClose }: ProjectModalProps) {
+  const { play } = useSound();
+
+  const handleClose = useCallback(() => {
+    play("click");
+    onClose();
+  }, [play, onClose]);
+
+  if (!project) return null;
+
+  return createPortal(
+    <ModalContent project={project} onClose={onClose} handleClose={handleClose} />,
+    document.body
   );
 }
 

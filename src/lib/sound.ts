@@ -339,6 +339,7 @@ class SoundEngine {
     }
 
     this.cleanupUnlockListeners();
+    this.unlock();
 
     const audio = this.ensureAudio();
     if (audio) {

@@ -192,6 +192,7 @@ export function Nav() {
         <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 lg:px-8 lg:grid lg:grid-cols-[1fr_auto_1fr]">
           {/* Left: Brand Logo */}
           <button
+            type="button"
             onClick={() => go("home")}
             aria-label="Back to top"
             className="shrink-0 justify-self-start transition-transform duration-200 hover:scale-105 active:scale-95"
@@ -209,6 +210,7 @@ export function Nav() {
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
+                type="button"
                 data-nav-id={s.id}
                 onClick={() => go(s.id)}
                 onMouseEnter={() => {

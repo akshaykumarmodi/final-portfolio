@@ -296,8 +296,10 @@ function ProjectCard({
           <Button
             variant="hero"
             size="sm"
+            type="button"
             onMouseEnter={() => play("hover")}
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               play("click");
               onViewDetails(project);
@@ -311,44 +313,41 @@ function ProjectCard({
 
           <div className="flex items-center gap-2">
             {project.liveUrl && (
-              <button
-                type="button"
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   play("click");
-                  try {
-                    window.open(project.liveUrl, "_blank", "noopener,noreferrer");
-                  } catch {
-                    // Fallback: navigate in current tab if popup blocked
-                    window.location.href = project.liveUrl;
-                  }
+                  window.open(project.liveUrl, "_blank", "noopener,noreferrer");
                 }}
                 onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="Open live demo"
                 className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-cyan-400/60 transition-all"
               >
                 <ExternalLink className="size-4" />
-              </button>
+              </a>
             )}
 
             {project.githubUrl && (
-              <button
-                type="button"
+              <a
+                href={project.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   play("click");
-                  try {
-                    window.open(project.githubUrl, "_blank", "noopener,noreferrer");
-                  } catch {
-                    window.location.href = project.githubUrl;
-                  }
+                  window.open(project.githubUrl, "_blank", "noopener,noreferrer");
                 }}
                 onTouchEnd={(e) => e.stopPropagation()}
                 aria-label="View source on GitHub"
                 className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-primary-glow/60 transition-all"
               >
                 <Github className="size-4" />
-              </button>
+              </a>
             )}
 
             {isAdmin && onEdit && (
@@ -587,6 +586,7 @@ export function Projects() {
             return (
               <button
                 key={cat}
+                type="button"
                 onClick={() => {
                   play("click");
                   setActiveCategory(cat);

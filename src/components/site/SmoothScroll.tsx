@@ -36,7 +36,7 @@ export function SmoothScroll() {
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            lerp: 0.12,
+            lerp: 0.18,
             smoothWheel: true,
             wheelMultiplier: 1.0,
             touchMultiplier: 1.0,
@@ -103,7 +103,11 @@ export function SmoothScroll() {
       const currentTarget = instance.targetScroll ?? window.scrollY;
       const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       const nextTarget = Math.max(0, Math.min(maxScroll, currentTarget + delta));
-      instance.scrollTo(nextTarget, { duration: 0.32 });
+      // Fast 100ms response for arrow keys eliminates sluggish keyboard lag while maintaining smooth interpolation
+      instance.scrollTo(nextTarget, {
+        duration: Math.abs(delta) > 200 ? 0.22 : 0.10,
+        immediate: false,
+      });
     };
 
     window.addEventListener("keydown", onKeyDown, { passive: false });

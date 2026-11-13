@@ -24,6 +24,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   const videoRef = useRef<HTMLVideoElement>(null);
   const targetProgressRef = useRef(0);
   const lastDrawnIndexRef = useRef<number>(-1);
+  const lastBgDrawnIndexRef = useRef<number>(-1);
   const fgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const bgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
@@ -131,15 +132,19 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     }
 
     // 2. Blurred Ambient Background Canvas (960x540 for lightweight GPU performance)
-    const bgCanvas = bgCanvasRef.current;
-    if (bgCanvas) {
-      if (!bgCtxRef.current) {
-        bgCtxRef.current = bgCanvas.getContext("2d", { alpha: false });
+    // Avoid re-computing heavy 64px Gaussian blur on identical/consecutive adjacent frames to preserve 60/120fps in full-screen mode
+    if (lastBgDrawnIndexRef.current === -1 || Math.abs(idx - lastBgDrawnIndexRef.current) >= 2 || idx === TOTAL_FRAMES - 1) {
+      const bgCanvas = bgCanvasRef.current;
+      if (bgCanvas) {
+        if (!bgCtxRef.current) {
+          bgCtxRef.current = bgCanvas.getContext("2d", { alpha: false });
+        }
+        const bgCtx = bgCtxRef.current;
+        if (bgCtx) {
+          bgCtx.drawImage(img, 0, 0, 960, 540);
+        }
       }
-      const bgCtx = bgCtxRef.current;
-      if (bgCtx) {
-        bgCtx.drawImage(img, 0, 0, 960, 540);
-      }
+      lastBgDrawnIndexRef.current = idx;
     }
 
     lastDrawnIndexRef.current = idx;

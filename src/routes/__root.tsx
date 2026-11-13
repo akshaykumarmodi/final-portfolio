@@ -137,23 +137,25 @@ function RootShell({ children }: { children: ReactNode }) {
                 try {
                   var a = document.getElementById('akm-bg-audio');
                   if (!a) return;
-                  if (localStorage.getItem('akm-sound') === 'off') return;
 
                   a.volume = 0.75;
                   a.muted = false;
 
                   function tryPlay() {
-                    if (!a || a.muted || !a.paused) return;
-                    var p = a.play();
-                    if (p !== undefined) {
-                      p.catch(function() {});
+                    if (!a) return;
+                    a.muted = false;
+                    a.volume = 0.75;
+                    if (a.paused && typeof a.play === 'function') {
+                      a.play().catch(function() {});
                     }
                   }
 
+                  // 1. Direct unmuted autoplay on initial website entry
                   var p = a.play();
                   if (p !== undefined) {
                     p.catch(function() {
-                      // Autoplay restriction: wait for visitor's very first interaction
+                      // 2. If browser autoplay policy holds back sound without interaction,
+                      // wake up and play on visitor's very first interaction on the page
                       var events = [
                         'pointerdown',
                         'pointerup',
@@ -168,12 +170,7 @@ function RootShell({ children }: { children: ReactNode }) {
                         events.forEach(function(ev) {
                           window.removeEventListener(ev, onFirstGesture, true);
                         });
-                        if (localStorage.getItem('akm-sound') === 'off') return;
-                        a.muted = false;
-                        a.volume = 0.75;
-                        if (a.paused) {
-                          tryPlay();
-                        }
+                        tryPlay();
                       }
                       events.forEach(function(ev) {
                         window.addEventListener(ev, onFirstGesture, { capture: true, once: true, passive: true });

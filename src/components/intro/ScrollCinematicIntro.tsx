@@ -30,7 +30,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isNearEnd, setIsNearEnd] = useState(false);
-  const { enabled, toggle } = useSound();
+  const { enabled, isPlaying, toggle } = useSound();
 
   // Transition into main portfolio (#home Hero section)
   const handleEnterPortfolio = useCallback(() => {
@@ -323,12 +323,12 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
               onPointerDown={(e) => {
                 e.stopPropagation();
               }}
-              aria-pressed={enabled}
-              aria-label={enabled ? "Turn sound off" : "Turn sound on"}
+              aria-pressed={isPlaying}
+              aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
               className="glass-pill glow-border group inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-200 bg-[#120e24]/75 hover:bg-[#1a1236]/95 border border-purple-500/30 hover:border-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(192,132,252,0.5)] backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer"
             >
-              <span className="hidden xs:inline">Sound {enabled ? "On" : "Off"}</span>
-              <SoundWaves on={enabled} />
+              <span className="hidden xs:inline">Sound {isPlaying ? "On" : "Off"}</span>
+              <SoundWaves on={isPlaying} />
             </button>
 
             <button

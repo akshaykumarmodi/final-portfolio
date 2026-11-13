@@ -135,7 +135,7 @@ export function Journey() {
           {/* Mobile Left-Aligned Spine */}
           <div
             aria-hidden
-            className="md:hidden pointer-events-none absolute left-6 top-4 bottom-4 w-0.5"
+            className="md:hidden pointer-events-none absolute left-5 sm:left-6 top-4 bottom-4 w-0.5"
           >
             <div className="h-full w-full bg-gradient-to-b from-cyan-400/30 via-purple-500/40 to-cyan-400/20" />
             {!reducedMotion && (
@@ -174,11 +174,11 @@ export function Journey() {
                   } flex-row`}
                 >
                   {/* Milestone Card Content Container */}
-                  <div className="ml-14 md:ml-0 md:w-1/2 md:px-8 w-full">
+                  <div className="w-full pl-12 sm:pl-14 md:pl-0 md:w-1/2 md:px-8">
                     <motion.div
                       whileHover={{ scale: 1.015, y: -3 }}
                       transition={{ duration: 0.25 }}
-                      className={`relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-7 backdrop-blur-2xl transition-all duration-300 ${
+                      className={`relative overflow-hidden rounded-[20px] sm:rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-4 sm:p-6 md:p-7 backdrop-blur-2xl transition-all duration-300 ${
                         isSelected || milestone.highlighted
                           ? "border-primary-glow/70 shadow-[0_0_35px_rgba(168,85,247,0.35)]"
                           : "hover:border-cyan-400/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)]"
@@ -192,7 +192,7 @@ export function Journey() {
                       {milestone.highlighted && !reducedMotion && (
                         <div
                           aria-hidden
-                          className="pointer-events-none absolute -inset-[1.5px] rounded-[25px] overflow-hidden opacity-60"
+                          className="pointer-events-none absolute -inset-[1.5px] rounded-[21px] sm:rounded-[25px] overflow-hidden opacity-60"
                         >
                           <div
                             className="absolute -inset-[100%] animate-[border-beam-spin_9s_linear_infinite]"
@@ -205,9 +205,9 @@ export function Journey() {
                       )}
 
                       {/* Header bar: Stage, Year Badge & Status */}
-                      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="glass-pill px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-wider uppercase text-cyan-300 border border-cyan-400/25">
+                      <div className="flex items-center justify-between gap-2 sm:gap-3 mb-3 flex-wrap">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className="glass-pill px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[0.7rem] sm:text-xs font-mono font-semibold tracking-wider uppercase text-cyan-300 border border-cyan-400/25">
                             {milestone.stage.toUpperCase()}
                           </span>
                           <span className="font-mono text-xs font-semibold tracking-widest text-purple-300">
@@ -235,7 +235,7 @@ export function Journey() {
                       </div>
 
                       {/* Title & Subtitle */}
-                      <h3 className="font-display text-xl sm:text-2xl font-bold text-white group-hover:text-cyan-200 transition-colors">
+                      <h3 className="font-display text-lg sm:text-xl md:text-2xl font-bold text-white group-hover:text-cyan-200 transition-colors">
                         {milestone.title}
                       </h3>
                       {milestone.subtitle && (
@@ -255,7 +255,7 @@ export function Journey() {
                           {milestone.tags.map((tag, tagIdx) => (
                             <span
                               key={tagIdx}
-                              className="glass-pill px-2.5 py-0.5 rounded-full text-[0.68rem] font-medium text-slate-300 border border-white/10"
+                              className="glass-pill px-2 sm:px-2.5 py-0.5 rounded-full text-[0.65rem] sm:text-[0.68rem] font-medium text-slate-300 border border-white/10"
                             >
                               {tag}
                             </span>
@@ -266,7 +266,7 @@ export function Journey() {
                   </div>
 
                   {/* Flowing Path Node Anchor (Centered on desktop, Left on mobile) */}
-                  <div className="absolute left-6 md:left-1/2 -translate-x-1/2 flex items-center justify-center z-20">
+                  <div className="absolute left-5 sm:left-6 md:left-1/2 -translate-x-1/2 flex items-center justify-center z-20">
                     <motion.div
                       whileHover={{ scale: 1.25 }}
                       animate={
@@ -275,13 +275,13 @@ export function Journey() {
                           : { scale: 1 }
                       }
                       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      className={`size-11 sm:size-12 rounded-2xl grid place-items-center backdrop-blur-xl border transition-all duration-300 ${
+                      className={`size-10 sm:size-11 md:size-12 rounded-xl sm:rounded-2xl grid place-items-center backdrop-blur-xl border transition-all duration-300 ${
                         isSelected || milestone.highlighted
                           ? "bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 border-white text-white shadow-[0_0_25px_rgba(6,182,212,0.9)]"
                           : "bg-[#100b24] border-white/20 text-cyan-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]"
                       }`}
                     >
-                      <Icon className="size-5 sm:size-5" />
+                      <Icon className="size-4 sm:size-5" />
                     </motion.div>
                   </div>
 

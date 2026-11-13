@@ -209,16 +209,7 @@ class SoundEngine {
     };
 
     // Authentic user activation triggers per W3C specification
-    const events = [
-      "pointerdown",
-      "pointerup",
-      "touchstart",
-      "touchend",
-      "mousedown",
-      "mouseup",
-      "click",
-      "keydown",
-    ];
+    const events = ["pointerdown", "touchstart", "mousedown", "keydown"];
 
     events.forEach((e) => {
       window.addEventListener(e, unlockHandler, { capture: true, passive: true });

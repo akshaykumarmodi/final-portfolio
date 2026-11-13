@@ -18,6 +18,7 @@ import { ProjectDialog } from "@/components/admin/ProjectDialog";
 import { useProjects } from "@/hooks/use-projects";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSound } from "@/hooks/use-sound";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { prefersReducedMotion } from "@/lib/scroll";
 import { Button } from "@/components/ui/button";
 import { type Project, resolveProjectImage, getDefaultProjectImage } from "@/content/projects";
@@ -112,9 +113,9 @@ function ProjectCard({
     mouseY.set(0);
   }, [mouseX, mouseY]);
 
-  const isSmall = typeof window !== "undefined" && window.innerWidth < 640;
-  const sideX = isSmall ? "62%" : "70%";
-  const sideScale = isSmall ? 0.82 : 0.86;
+  const isMobile = useIsMobile();
+  const sideX = isMobile ? "68%" : "70%";
+  const sideScale = isMobile ? 0.80 : 0.86;
 
   // Transform states depending on 3D gallery carousel position (100% GPU-composited, zero CSS filter repaints)
   const getVariants = () => {
@@ -131,16 +132,16 @@ function ProjectCard({
         return {
           x: `-${sideX}`,
           scale: sideScale,
-          rotateY: 18,
-          opacity: 0.55,
+          rotateY: isMobile ? 12 : 18,
+          opacity: isMobile ? 0.35 : 0.55,
           zIndex: 10,
         };
       case "right":
         return {
           x: sideX,
           scale: sideScale,
-          rotateY: -18,
-          opacity: 0.55,
+          rotateY: isMobile ? -12 : -18,
+          opacity: isMobile ? 0.35 : 0.55,
           zIndex: 10,
         };
       default:
@@ -175,7 +176,7 @@ function ProjectCard({
         !isActive ? "cursor-pointer hover:opacity-85" : ""
       }`}
       style={{
-        width: "min(480px, 86vw)",
+        width: "min(480px, calc(100vw - 32px))",
         zIndex: position === "center" ? 40 : 10,
         pointerEvents: position === "hidden" ? "none" : "auto",
       }}
@@ -208,7 +209,7 @@ function ProjectCard({
             ? "-8px 0 32px -6px rgba(168,85,247,0.55), 8px 0 32px -6px rgba(6,182,212,0.55), 0 35px 80px -15px rgba(0,0,0,0.95)"
             : "0 20px 40px -10px rgba(0,0,0,0.8)",
         }}
-        className="relative overflow-hidden rounded-[26px] bg-[#0c081c]/95 border border-white/15 p-5 sm:p-6 backdrop-blur-md [backface-visibility:hidden]"
+        className="relative overflow-hidden rounded-[22px] sm:rounded-[26px] bg-[#0c081c]/95 border border-white/15 p-4 sm:p-6 backdrop-blur-md [backface-visibility:hidden]"
       >
         {/* Subtle top specular streak reflection */}
         <div
@@ -219,7 +220,7 @@ function ProjectCard({
         {/* 100% GPU-composited darkening overlay for side cards */}
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-0 z-20 rounded-[26px] bg-[#070510] transition-opacity duration-300 ${
+          className={`pointer-events-none absolute inset-0 z-20 rounded-[22px] sm:rounded-[26px] bg-[#070510] transition-opacity duration-300 ${
             isActive ? "opacity-0" : "opacity-40"
           }`}
         />
@@ -251,46 +252,46 @@ function ProjectCard({
           />
 
           {/* Category Tag pill */}
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full px-3 py-1 text-[0.70rem] font-semibold tracking-wider text-cyan-300 backdrop-blur-md bg-black/60 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+          <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-[0.68rem] sm:text-[0.70rem] font-semibold tracking-wider text-cyan-300 backdrop-blur-md bg-black/60 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
             <Sparkles className="size-3 text-cyan-400" />
             <span>{project.category}</span>
           </div>
 
           {/* Featured pill badge */}
           {project.featured && (
-            <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold tracking-wider text-purple-300 backdrop-blur-md bg-black/60 border border-purple-500/30">
+            <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 rounded-full px-2 sm:px-2.5 py-1 text-[0.65rem] sm:text-[0.68rem] font-semibold tracking-wider text-purple-300 backdrop-blur-md bg-black/60 border border-purple-500/30">
               Featured
             </div>
           )}
         </div>
 
         {/* Card Body: Title & Tagline with subtle gradient shimmer */}
-        <div className="mt-4 sm:mt-5">
-          <h3 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white transition-colors duration-300 group-hover:text-cyan-200">
+        <div className="mt-3.5 sm:mt-5">
+          <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white transition-colors duration-300 group-hover:text-cyan-200 line-clamp-1">
             {project.title}
           </h3>
-          <p className="mt-1.5 text-xs sm:text-sm font-medium text-gradient-shimmer truncate">
+          <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm font-medium text-gradient-shimmer truncate">
             {project.tagline}
           </p>
         </div>
 
         {/* Short Description */}
-        <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm leading-relaxed text-slate-300 line-clamp-2">
+        <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-slate-300 line-clamp-2">
           {project.description}
         </p>
 
         {/* Tech Stack Capsule Pills */}
-        <div className="mt-3.5 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 sm:mt-3.5 flex flex-wrap gap-1.5">
           {project.tech.slice(0, 4).map((tech, idx) => (
             <span
               key={idx}
-              className="glass-pill inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.70rem] font-medium text-slate-200 border border-white/10"
+              className="glass-pill inline-flex items-center rounded-full px-2 sm:px-2.5 py-0.5 text-[0.68rem] sm:text-[0.70rem] font-medium text-slate-200 border border-white/10"
             >
               {tech}
             </span>
           ))}
           {project.tech.length > 4 && (
-            <span className="glass-pill inline-flex items-center rounded-full px-2 py-0.5 text-[0.68rem] font-medium text-slate-400">
+            <span className="glass-pill inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[0.65rem] sm:text-[0.68rem] font-medium text-slate-400">
               +{project.tech.length - 4}
             </span>
           )}
@@ -298,7 +299,7 @@ function ProjectCard({
 
         {/* Footer Actions: View Project CTA & Links */}
         <div
-          className="relative z-30 mt-5 flex items-center justify-between gap-3 pt-3.5 border-t border-white/10"
+          className="relative z-30 mt-4 sm:mt-5 flex items-center justify-between gap-2 sm:gap-3 pt-3 sm:pt-3.5 border-t border-white/10"
           onPointerEnter={() => {
             mouseX.set(0);
             mouseY.set(0);
@@ -314,13 +315,13 @@ function ProjectCard({
               play("click");
               onViewDetails(project);
             }}
-            className="gap-2 text-xs sm:text-sm px-4 py-2 cursor-pointer"
+            className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 shrink-0 cursor-pointer"
           >
-            <Eye className="size-4" />
+            <Eye className="size-3.5 sm:size-4" />
             View Project
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {project.liveUrl && (
               <a
                 href={project.liveUrl}
@@ -331,9 +332,9 @@ function ProjectCard({
                   play("click");
                 }}
                 aria-label="Open live demo"
-                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-cyan-400/60 transition-all cursor-pointer"
+                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-cyan-400/60 transition-all cursor-pointer shrink-0"
               >
-                <ExternalLink className="size-4" />
+                <ExternalLink className="size-3.5 sm:size-4" />
               </a>
             )}
 
@@ -347,9 +348,9 @@ function ProjectCard({
                   play("click");
                 }}
                 aria-label="View source on GitHub"
-                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-primary-glow/60 transition-all cursor-pointer"
+                className="glass-pill grid size-8 sm:size-9 place-items-center rounded-full text-slate-300 hover:text-white hover:border-primary-glow/60 transition-all cursor-pointer shrink-0"
               >
-                <Github className="size-4" />
+                <Github className="size-3.5 sm:size-4" />
               </a>
             )}
 
@@ -362,7 +363,7 @@ function ProjectCard({
                   onEdit(project);
                 }}
                 aria-label="Edit project"
-                className="glass-pill px-2.5 py-1 rounded-full text-[0.70rem] font-semibold text-purple-300 border border-purple-500/30 hover:border-purple-400 cursor-pointer"
+                className="glass-pill px-2 sm:px-2.5 py-1 rounded-full text-[0.68rem] sm:text-[0.70rem] font-semibold text-purple-300 border border-purple-500/30 hover:border-purple-400 cursor-pointer shrink-0"
               >
                 Edit
               </button>
@@ -490,7 +491,7 @@ export function Projects() {
   return (
     <section
       id="projects"
-      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-20 sm:py-24 text-foreground scroll-mt-0"
+      className="relative isolate min-h-[100svh] w-full overflow-hidden flex flex-col justify-center py-16 sm:py-24 text-foreground scroll-mt-0"
     >
       {/* ----------------------------------------------------------------- */}
       {/* Background world: continuous with Hero and About universe         */}
@@ -532,19 +533,19 @@ export function Projects() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="glass-pill inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold tracking-wider text-cyan-300 border border-cyan-500/25 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+              className="glass-pill inline-flex items-center gap-2 rounded-full px-3.5 sm:px-4 py-1.5 text-xs font-semibold tracking-wider text-cyan-300 border border-cyan-500/25 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
             >
               <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
               03 / PROJECTS
             </motion.div>
 
             {/* Title with subtle continuous violet-to-teal gradient shimmer */}
-            <h2 className="mt-4 font-display text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight text-white">
+            <h2 className="mt-4 font-display text-3xl sm:text-5xl lg:text-6xl font-medium tracking-tight text-white">
               My Creative <span className="text-gradient-shimmer">Works.</span>
             </h2>
 
             {/* Subtitle */}
-            <p className="mt-2.5 font-sans text-xs sm:text-sm tracking-[0.32em] text-cyan-300/80 uppercase font-medium">
+            <p className="mt-2.5 font-sans text-[0.7rem] sm:text-sm tracking-[0.25em] sm:tracking-[0.32em] text-cyan-300/80 uppercase font-medium">
               Ideas. Code. Innovation.
             </p>
           </div>
@@ -577,7 +578,7 @@ export function Projects() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none"
+          className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none"
         >
           {availableCategories.map((cat) => {
             const isSelected = activeCategory.toLowerCase() === cat.toLowerCase();
@@ -594,14 +595,14 @@ export function Projects() {
                   play("click");
                   setActiveCategory(cat);
                 }}
-                className={`glass-pill relative shrink-0 rounded-full px-4 py-2 text-xs sm:text-sm font-medium transition-all duration-300 ${
+                className={`glass-pill relative shrink-0 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-300 ${
                   isSelected
                     ? "border-primary-glow/70 bg-primary/25 text-white shadow-[0_0_20px_rgba(168,85,247,0.35)]"
                     : "text-slate-300 hover:text-white hover:border-cyan-400/50"
                 }`}
               >
                 <span>{cat}</span>
-                <span className="ml-1.5 opacity-60 text-[0.70rem]">({count})</span>
+                <span className="ml-1.5 opacity-60 text-[0.68rem] sm:text-[0.70rem]">({count})</span>
               </button>
             );
           })}
@@ -619,7 +620,7 @@ export function Projects() {
         >
           {/* Main 3D Card Stage Carousel: Stable height prevents background WebGL canvas clearing */}
           <div
-            className="relative flex items-center justify-center w-full min-h-[580px] sm:min-h-[600px] h-[580px] sm:h-[600px]"
+            className="relative flex items-center justify-center w-full min-h-[490px] sm:min-h-[550px] md:min-h-[600px] h-[490px] sm:h-[550px] md:h-[600px]"
           >
             {filteredProjects.map((p, idx) => {
               const pKey = p.id || p.slug;
@@ -654,12 +655,12 @@ export function Projects() {
           {/* =========================================================== */}
           {/* GALLERY NAVIGATION CONTROLS                                 */}
           {/* =========================================================== */}
-          <div className="relative z-30 mt-10 sm:mt-12 flex items-center justify-between w-full max-w-sm px-4">
+          <div className="relative z-30 mt-6 sm:mt-10 flex items-center justify-between w-full max-w-sm px-4">
             {/* Previous Button */}
             <button
               onClick={handlePrev}
               aria-label="Previous project"
-              className="glass-pill glow-border grid size-11 place-items-center rounded-full text-foreground transition-all duration-200 hover:scale-110 hover:border-primary-glow/60"
+              className="glass-pill glow-border grid size-10 sm:size-11 place-items-center rounded-full text-foreground transition-all duration-200 hover:scale-110 hover:border-primary-glow/60"
             >
               <ChevronLeft className="size-5" />
             </button>
@@ -687,7 +688,7 @@ export function Projects() {
             <button
               onClick={handleNext}
               aria-label="Next project"
-              className="glass-pill glow-border grid size-11 place-items-center rounded-full text-foreground transition-all duration-200 hover:scale-110 hover:border-primary-glow/60"
+              className="glass-pill glow-border grid size-10 sm:size-11 place-items-center rounded-full text-foreground transition-all duration-200 hover:scale-110 hover:border-primary-glow/60"
             >
               <ChevronRight className="size-5" />
             </button>

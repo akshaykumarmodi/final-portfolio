@@ -31,7 +31,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-5 md:p-8">
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-2.5 sm:p-5 md:p-8">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -50,7 +50,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
           transition={{ type: "spring", stiffness: 320, damping: 28 }}
           data-lenis-prevent="true"
-          className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain rounded-[28px] bg-[#0c0919] p-5 sm:p-8 md:p-10 text-foreground border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.95)] scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
+          className="relative z-10 w-full max-w-4xl max-h-[92dvh] overflow-y-auto overscroll-contain rounded-[22px] sm:rounded-[28px] bg-[#0c0919] p-4 sm:p-8 md:p-10 pb-6 sm:pb-8 text-foreground border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.95)] scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
           style={{
             borderLeft: "2.5px solid #a855f7",
             borderRight: "2.5px solid #06b6d4",
@@ -60,14 +60,14 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Row: Category + Close Button */}
-          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div className="flex items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <span className="glass-pill inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold tracking-wider text-cyan-300 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+              <span className="glass-pill inline-flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-1 text-[0.72rem] sm:text-xs font-semibold tracking-wider text-cyan-300 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
                 <Sparkles className="size-3 text-cyan-400" />
                 {project.category}
               </span>
               {project.featured && (
-                <span className="glass-pill inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wider text-purple-300 border border-purple-500/30">
+                <span className="glass-pill inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-[0.70rem] sm:text-xs font-semibold tracking-wider text-purple-300 border border-purple-500/30">
                   Featured
                 </span>
               )}
@@ -76,14 +76,14 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
             <button
               onClick={handleClose}
               aria-label="Close project modal"
-              className="glass-pill grid size-9 sm:size-10 place-items-center rounded-full text-foreground/80 transition-all duration-200 hover:scale-110 hover:text-white hover:border-primary-glow/60"
+              className="glass-pill grid size-8 sm:size-10 place-items-center rounded-full text-foreground/80 transition-all duration-200 hover:scale-110 hover:text-white hover:border-primary-glow/60 cursor-pointer"
             >
-              <X className="size-5" />
+              <X className="size-4 sm:size-5" />
             </button>
           </div>
 
           {/* Project Cover Image */}
-          <div className="relative mt-6 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#120d24] shadow-2xl">
+          <div className="relative mt-4 sm:mt-6 aspect-[16/9] w-full overflow-hidden rounded-xl sm:rounded-2xl border border-white/15 bg-[#120d24] shadow-2xl">
             <img
               key={project.image}
               src={resolveProjectImage(project.image, project.slug || project.title)}
@@ -107,22 +107,22 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           </div>
 
           {/* Title and Tagline */}
-          <div className="mt-8">
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
+          <div className="mt-5 sm:mt-8">
+            <h2 className="font-display text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
               {project.title}
             </h2>
-            <p className="mt-2 text-base sm:text-lg font-medium text-gradient-violet">
+            <p className="mt-1.5 sm:mt-2 text-sm sm:text-lg font-medium text-gradient-violet">
               {project.tagline}
             </p>
           </div>
 
           {/* Full Description */}
-          <div className="mt-6 space-y-4 text-[1.02rem] sm:text-[1.08rem] leading-relaxed text-slate-300 font-sans">
+          <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4 text-sm sm:text-base md:text-[1.08rem] leading-relaxed text-slate-300 font-sans">
             <p>{project.fullDescription || project.description}</p>
           </div>
 
           {/* Tech Stack Badges */}
-          <div className="mt-8 pt-6 border-t border-white/10">
+          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
             <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm font-semibold tracking-wider text-slate-400 uppercase font-mono">
               <Layers className="size-4 text-cyan-400" />
               <span>Technologies & Tools</span>
@@ -131,7 +131,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
               {project.tech.map((t, idx) => (
                 <span
                   key={idx}
-                  className="glass-pill inline-flex items-center rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium text-slate-200 border border-white/10 transition-colors hover:border-cyan-400/50 hover:text-white"
+                  className="glass-pill inline-flex items-center rounded-full px-3 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-slate-200 border border-white/10 transition-colors hover:border-cyan-400/50 hover:text-white"
                 >
                   {t}
                 </span>
@@ -141,11 +141,11 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
 
           {/* Additional Screenshots (if available) */}
           {project.screenshots && project.screenshots.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-white/10">
-              <h3 className="mb-4 text-sm font-semibold tracking-wider text-slate-400 uppercase font-mono">
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
+              <h3 className="mb-3 sm:mb-4 text-xs sm:text-sm font-semibold tracking-wider text-slate-400 uppercase font-mono">
                 Project Gallery
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {project.screenshots.map((shot, sIdx) => (
                   <div
                     key={sIdx}
@@ -163,15 +163,15 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           )}
 
           {/* Footer Action Bar */}
-          <div className="mt-10 flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-white/10">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-5 sm:pt-6 border-t border-white/10">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
               {project.liveUrl && (
                 <a
                   href={project.liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => play("click")}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[image:var(--gradient-cta)] px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-[var(--shadow-glow)] transition-[transform,box-shadow] duration-500 ease-[var(--ease-cinematic)] hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--primary-glow),0_18px_60px_-10px_var(--primary)]"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[image:var(--gradient-cta)] px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-[var(--shadow-glow)] transition-[transform,box-shadow] duration-500 ease-[var(--ease-cinematic)] hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--primary-glow),0_18px_60px_-10px_var(--primary)] w-full sm:w-auto text-center"
                 >
                   <ExternalLink className="size-4" />
                   Live Preview
@@ -184,7 +184,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => play("click")}
-                  className="group relative rounded-full glass-pill px-5 py-2.5 text-sm font-medium text-foreground transition-[transform,background-color,border-color] duration-500 ease-[var(--ease-cinematic)] hover:-translate-y-0.5 hover:border-primary-glow/50 hover:bg-primary/10"
+                  className="group relative rounded-full glass-pill px-5 py-2.5 text-sm font-medium text-foreground transition-[transform,background-color,border-color] duration-500 ease-[var(--ease-cinematic)] hover:-translate-y-0.5 hover:border-primary-glow/50 hover:bg-primary/10 inline-flex items-center justify-center w-full sm:w-auto text-center"
                 >
                   <span className="inline-flex items-center gap-2">
                     <Github className="size-4" />
@@ -196,7 +196,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
 
             <button
               onClick={handleClose}
-              className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+              className="inline-flex items-center justify-center sm:justify-start gap-2 py-2 text-sm text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="size-4" />
               Back to Projects

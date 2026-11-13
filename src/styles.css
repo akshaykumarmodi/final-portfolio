@@ -167,7 +167,8 @@
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     background-color: #0b0816;
-    scroll-behavior: smooth;
+    /* scroll-behavior managed by Lenis — native smooth would conflict and double-smooth */
+    scroll-behavior: auto;
     overflow-x: clip;
   }
 
@@ -198,6 +199,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow-x: clip;
+    /* Prevent native browser scroll bounce from fighting Lenis interpolation */
+    overscroll-behavior: none;
     min-height: 100vh;
   }
 

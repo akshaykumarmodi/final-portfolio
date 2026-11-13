@@ -218,13 +218,13 @@ export function HeroFog() {
       canvas.getContext("webgl2", {
         alpha: true,
         premultipliedAlpha: true,
-        preserveDrawingBuffer: true,
+        preserveDrawingBuffer: false,
         powerPreference: "high-performance",
       }) ||
       (canvas.getContext("webgl", {
         alpha: true,
         premultipliedAlpha: true,
-        preserveDrawingBuffer: true,
+        preserveDrawingBuffer: false,
       }) as WebGLRenderingContext | null);
 
     if (!gl) return;
@@ -294,6 +294,8 @@ export function HeroFog() {
 
     let rafId = 0;
     let isVisible = true;
+    let lastRenderTime = 0;
+    const FRAME_INTERVAL = 1000 / 60; // Smooth 60fps cap leaves GPU headroom for 120Hz/ProMotion scrolling
     const startTime = performance.now();
 
     // Bind program once — it never changes
@@ -305,6 +307,12 @@ export function HeroFog() {
         return;
       }
 
+      rafId = requestAnimationFrame(render);
+
+      const delta = now - lastRenderTime;
+      if (delta < FRAME_INTERVAL) return;
+      lastRenderTime = now - (delta % FRAME_INTERVAL);
+
       currentX += (targetX - currentX) * 0.04;
       currentY += (targetY - currentY) * 0.04;
 
@@ -315,8 +323,6 @@ export function HeroFog() {
 
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-      rafId = requestAnimationFrame(render);
     };
 
     const updateSize = () => {
@@ -330,7 +336,10 @@ export function HeroFog() {
         canvas.height = h;
         gl.viewport(0, 0, w, h);
         gl.uniform2f(uResolutionLoc, w, h);
-        render(performance.now());
+        if (isVisible) {
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
       }
     };
 
@@ -341,23 +350,29 @@ export function HeroFog() {
     });
     ro.observe(container);
 
-    // Pause rendering when offscreen to preserve 60fps GPU performance and smooth scrolling
+    // Pause rendering immediately when offscreen to preserve 60/120fps GPU performance and smooth scrolling
     const io = new IntersectionObserver(
       ([entry]) => {
         const nextVisible = entry ? entry.isIntersecting : true;
         if (nextVisible && !isVisible) {
           isVisible = true;
-          render(performance.now());
+          if (!rafId) {
+            rafId = requestAnimationFrame(render);
+          }
         } else if (!nextVisible && isVisible) {
           isVisible = false;
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
         }
       },
-      { threshold: 0.01 },
+      { threshold: 0 },
     );
     io.observe(container);
 
     // Draw FRAME 0 IMMEDIATELY with balanced rising smoke
-    render(performance.now());
+    rafId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(rafId);

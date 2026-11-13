@@ -169,7 +169,7 @@ export default function HeroScene({
       dpr={[1, 1.5]}
       frameloop={active ? "always" : "never"}
       camera={{ position: [0, 0, 10], fov: 32, near: 0.1, far: 50 }}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance", preserveDrawingBuffer: true }}
+      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ pointerEvents: "none" }}
     >
       <Scene reduced={reduced} onReady={onReady} />

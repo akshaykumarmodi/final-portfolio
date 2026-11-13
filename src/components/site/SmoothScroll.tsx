@@ -34,27 +34,16 @@ export function SmoothScroll() {
         .then(({ default: Lenis }) => {
           if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) return;
 
-          const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-          const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            // lerp-based smooth scroll for desktop/Mac — adapts to scroll velocity
-            // for ultra-silky trackpad & mouse wheel feel on Mac/laptop
-            lerp: 0.09,
-            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            orientation: "vertical",
-            gestureOrientation: "vertical",
+            // Pure lerp damping for Mac/desktop without fixed duration or easing override.
+            // This prevents rapid wheel/trackpad micro-deltas from resetting the animation curve.
+            lerp: 0.08,
             smoothWheel: true,
-            // Higher multiplier = scroll covers more distance per wheel tick — feels snappier on Mac
-            wheelMultiplier: isMobile ? 1.0 : 1.2,
-            // syncTouch lets Lenis follow native touch momentum — smooth & natural on phones
-            syncTouch: isTouch,
-            // syncTouchLerp: how fast Lenis catches up to native touch position (lower = silkier)
-            syncTouchLerp: 0.08,
-            // Higher inertia = more momentum after lifting finger (feels native)
-            touchInertiaExponent: 2,
+            wheelMultiplier: 1.0,
+            // Native hardware touch scrolling on phones for 100% stutter-free 60/120Hz touch
+            syncTouch: false,
             touchMultiplier: 1.0,
             infinite: false,
             overscroll: false,

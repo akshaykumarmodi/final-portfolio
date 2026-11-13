@@ -24,6 +24,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   const videoRef = useRef<HTMLVideoElement>(null);
   const targetProgressRef = useRef(0);
   const lastDrawnIndexRef = useRef<number>(-1);
+  const isIntroVisibleRef = useRef(true);
+  const fgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const bgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const progressTickingRef = useRef(false);
 
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
   const loadedFlagsRef = useRef<boolean[]>(new Array(TOTAL_FRAMES).fill(false));
@@ -42,19 +46,28 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    // If the intro section is scrolled completely off-screen, skip DOM layout measurements
+    if (!isIntroVisibleRef.current) return;
+    if (progressTickingRef.current) return;
 
-    const rect = container.getBoundingClientRect();
-    const scrollable = container.offsetHeight - window.innerHeight;
-    if (scrollable <= 0) return;
+    progressTickingRef.current = true;
+    requestAnimationFrame(() => {
+      progressTickingRef.current = false;
+      const container = containerRef.current;
+      if (!container || !isIntroVisibleRef.current) return;
 
-    const raw = -rect.top / scrollable;
-    const progress = Math.min(Math.max(raw, 0), 1);
-    targetProgressRef.current = progress;
+      const rect = container.getBoundingClientRect();
+      const scrollable = container.offsetHeight - window.innerHeight;
+      if (scrollable <= 0) return;
 
-    // Near ending frames (>= 70% scroll progress), highlight/enable interactive Enter Portfolio
-    setIsNearEnd(progress >= 0.70);
+      const raw = -rect.top / scrollable;
+      const progress = Math.min(Math.max(raw, 0), 1);
+      targetProgressRef.current = progress;
+
+      // Near ending frames (>= 70% scroll progress), highlight/enable interactive Enter Portfolio
+      const nearEnd = progress >= 0.70;
+      setIsNearEnd((prev) => (prev !== nearEnd ? nearEnd : prev));
+    });
   }, []);
 
   // Dynamically size foreground canvas to device physical pixel resolution (prevents CSS upscaling blur)
@@ -69,6 +82,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       if (fgCanvas.width !== targetW || fgCanvas.height !== targetH) {
         fgCanvas.width = targetW;
         fgCanvas.height = targetH;
+        fgCtxRef.current = null; // Re-cache context on dimension change
         lastDrawnIndexRef.current = -1; // Force redraw with sharp resolution
       }
     }
@@ -91,7 +105,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     return () => {
       window.removeEventListener("scroll", updateProgress);
       window.removeEventListener("resize", updateProgress);
-      window.removeEventListener("resize", updateCanvasResolution);      if (lenis) {
+      window.removeEventListener("resize", updateCanvasResolution);
+      if (lenis) {
         lenis.off("scroll", updateProgress);
       }
     };
@@ -106,7 +121,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     // 1. Sharp Foreground Canvas (Full physical resolution + high-quality smoothing)
     const fgCanvas = canvasRef.current;
     if (fgCanvas) {
-      const fgCtx = fgCanvas.getContext("2d", { alpha: false });
+      if (!fgCtxRef.current) {
+        fgCtxRef.current = fgCanvas.getContext("2d", { alpha: false });
+      }
+      const fgCtx = fgCtxRef.current;
       if (fgCtx) {
         fgCtx.imageSmoothingEnabled = true;
         fgCtx.imageSmoothingQuality = "high";
@@ -117,7 +135,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     // 2. Blurred Ambient Background Canvas (960x540 for lightweight GPU performance)
     const bgCanvas = bgCanvasRef.current;
     if (bgCanvas) {
-      const bgCtx = bgCanvas.getContext("2d", { alpha: false });
+      if (!bgCtxRef.current) {
+        bgCtxRef.current = bgCanvas.getContext("2d", { alpha: false });
+      }
+      const bgCtx = bgCtxRef.current;
       if (bgCtx) {
         bgCtx.drawImage(img, 0, 0, 960, 540);
       }
@@ -215,6 +236,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     const io = new IntersectionObserver(
       ([entry]) => {
         const nowVisible = entry ? entry.isIntersecting : true;
+        isIntroVisibleRef.current = nowVisible;
         if (nowVisible && !isVisible) {
           isVisible = true;
           if (!rafId) rafId = requestAnimationFrame(render);

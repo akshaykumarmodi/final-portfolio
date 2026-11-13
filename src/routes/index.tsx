@@ -80,7 +80,8 @@ function Index() {
   });
 
   useEffect(() => {
-    const onScroll = () => {
+    let ticking = false;
+    const checkHome = () => {
       const homeEl = document.getElementById("home");
       if (homeEl) {
         const homeTop = homeEl.getBoundingClientRect().top;
@@ -92,6 +93,15 @@ function Index() {
       }
     };
 
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        checkHome();
+        ticking = false;
+      });
+    };
+
     const onNavEvent = (e: Event) => {
       const detail = (e as CustomEvent<{ id: string }>).detail;
       if (detail?.id && detail.id !== "intro") {
@@ -101,7 +111,7 @@ function Index() {
 
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("portfolio:navigation", onNavEvent);
-    onScroll();
+    checkHome();
 
     return () => {
       window.removeEventListener("scroll", onScroll);

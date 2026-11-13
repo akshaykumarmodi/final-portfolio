@@ -50,6 +50,7 @@ function ProjectCard({
 }: ProjectCardProps) {
   const { play } = useSound();
   const cardRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
   const reducedMotion = typeof window !== "undefined" && prefersReducedMotion();
 
   // Mouse tilt physics for the 3D card
@@ -143,7 +144,13 @@ function ProjectCard({
       drag={isActive ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.25}
+      dragSnapToOrigin
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
       onDragEnd={(_e, info) => {
+        // Small delay so click handlers can check isDraggingRef
+        setTimeout(() => { isDraggingRef.current = false; }, 50);
         if (!isActive) return;
         const swipeThreshold = 50;
         if (info.offset.x < -swipeThreshold || info.velocity.x < -350) {
@@ -275,7 +282,10 @@ function ProjectCard({
         </div>
 
         {/* Footer Actions: View Project CTA & Links */}
-        <div className="mt-5 flex items-center justify-between gap-3 pt-3.5 border-t border-white/10">
+        <div
+          className="mt-5 flex items-center justify-between gap-3 pt-3.5 border-t border-white/10"
+          onPointerDownCapture={(e) => e.stopPropagation()}
+        >
           <Button
             variant="hero"
             size="sm"
@@ -283,6 +293,7 @@ function ProjectCard({
             onMouseEnter={() => play("hover")}
             onClick={(e) => {
               e.stopPropagation();
+              if (isDraggingRef.current) return;
               play("click");
               onViewDetails(project);
             }}
@@ -298,6 +309,7 @@ function ProjectCard({
   
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isDraggingRef.current) return;
                   play("click");
                   window.open(project.liveUrl, "_blank", "noopener,noreferrer");
                 }}
@@ -313,6 +325,7 @@ function ProjectCard({
   
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isDraggingRef.current) return;
                   play("click");
                   window.open(project.githubUrl, "_blank", "noopener,noreferrer");
                 }}
@@ -327,6 +340,7 @@ function ProjectCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isDraggingRef.current) return;
                   play("click");
                   onEdit(project);
                 }}

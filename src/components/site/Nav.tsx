@@ -96,10 +96,9 @@ export function Nav() {
     }, 150);
   }, []);
 
-  // Active section detection on scroll across all portfolio sections (throttled with RAF to eliminate layout thrashing)
+  // Active section detection on scroll across all portfolio sections
   useEffect(() => {
-    let ticking = false;
-    const checkSections = () => {
+    const onScroll = () => {
       const introEl = document.getElementById("intro");
       if (introEl) {
         const homeEl = document.getElementById("home");
@@ -127,17 +126,8 @@ export function Nav() {
       setActive("home");
     };
 
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        checkSections();
-        ticking = false;
-      });
-    };
-
     window.addEventListener("scroll", onScroll, { passive: true });
-    checkSections();
+    onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 

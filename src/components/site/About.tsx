@@ -416,7 +416,7 @@ export function About() {
             <motion.div
               animate={reducedMotion ? {} : { y: [-3, 3, -3], rotateZ: [-0.6, 0.6, -0.6] }}
               transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
-              className="relative flex flex-col items-center will-change-transform"
+              className="relative flex flex-col items-center"
             >
               <LanyardAndClip />
 
@@ -634,7 +634,8 @@ export function About() {
               initial={{ scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.18 }}              className="h-[2px] w-20 origin-left rounded-full bg-gradient-to-r from-purple-500 via-sky-400 to-transparent shadow-[0_0_10px_#a855f7] mb-2.5 sm:mb-3"
+              transition={{ duration: 0.7, delay: 0.18 }}
+              className="h-[2px] w-20 origin-left rounded-full bg-gradient-to-r from-purple-500 via-sky-400 to-transparent shadow-[0_0_10px_#a855f7] mb-2.5 sm:mb-3"
             />
 
             {/* Introduction Paragraphs with Purple Quote */}

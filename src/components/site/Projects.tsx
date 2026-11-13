@@ -209,7 +209,7 @@ function ProjectCard({
             ? "-8px 0 32px -6px rgba(168,85,247,0.55), 8px 0 32px -6px rgba(6,182,212,0.55), 0 35px 80px -15px rgba(0,0,0,0.95)"
             : "0 20px 40px -10px rgba(0,0,0,0.8)",
         }}
-        className="relative overflow-hidden rounded-[22px] sm:rounded-[26px] bg-[#0c081c]/95 border border-white/15 p-4 sm:p-6 backdrop-blur-md [backface-visibility:hidden] will-change-transform"
+        className="relative overflow-hidden rounded-[22px] sm:rounded-[26px] bg-[#0c081c]/95 border border-white/15 p-4 sm:p-6 backdrop-blur-md [backface-visibility:hidden]"
       >
         {/* Subtle top specular streak reflection */}
         <div

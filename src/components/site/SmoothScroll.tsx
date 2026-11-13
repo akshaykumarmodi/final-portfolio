@@ -33,7 +33,6 @@ export function SmoothScroll() {
       import("lenis")
         .then(({ default: Lenis }) => {
           if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) return;
-
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,

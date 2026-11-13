@@ -24,9 +24,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   const videoRef = useRef<HTMLVideoElement>(null);
   const targetProgressRef = useRef(0);
   const lastDrawnIndexRef = useRef<number>(-1);
-  const isIntroVisibleRef = useRef(true);
-  const fgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const bgCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
   const loadedFlagsRef = useRef<boolean[]>(new Array(TOTAL_FRAMES).fill(false));
@@ -43,10 +40,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     scrollToSection("home");
   }, [onEnterPortfolio]);
 
-  // Compute scroll progress through the intro track with 1:1 scroll sync
+  // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
-    if (!isIntroVisibleRef.current) return;
-
     const container = containerRef.current;
     if (!container) return;
 
@@ -59,8 +54,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     targetProgressRef.current = progress;
 
     // Near ending frames (>= 70% scroll progress), highlight/enable interactive Enter Portfolio
-    const nearEnd = progress >= 0.70;
-    setIsNearEnd((prev) => (prev !== nearEnd ? nearEnd : prev));
+    setIsNearEnd(progress >= 0.70);
   }, []);
 
   // Dynamically size foreground canvas to device physical pixel resolution (prevents CSS upscaling blur)
@@ -75,7 +69,6 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       if (fgCanvas.width !== targetW || fgCanvas.height !== targetH) {
         fgCanvas.width = targetW;
         fgCanvas.height = targetH;
-        fgCtxRef.current = null; // Re-cache context on dimension change
         lastDrawnIndexRef.current = -1; // Force redraw with sharp resolution
       }
     }
@@ -84,8 +77,8 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   // Scroll listener synchronization (both passive window scroll and Lenis if active)
   useEffect(() => {
     window.addEventListener("scroll", updateProgress, { passive: true });
-    window.addEventListener("resize", updateProgress, { passive: true });
-    window.addEventListener("resize", updateCanvasResolution, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    window.addEventListener("resize", updateCanvasResolution);
 
     const lenis = getLenis();
     if (lenis) {
@@ -114,10 +107,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     // 1. Sharp Foreground Canvas (Full physical resolution + high-quality smoothing)
     const fgCanvas = canvasRef.current;
     if (fgCanvas) {
-      if (!fgCtxRef.current) {
-        fgCtxRef.current = fgCanvas.getContext("2d", { alpha: false });
-      }
-      const fgCtx = fgCtxRef.current;
+      const fgCtx = fgCanvas.getContext("2d", { alpha: false });
       if (fgCtx) {
         fgCtx.imageSmoothingEnabled = true;
         fgCtx.imageSmoothingQuality = "high";
@@ -128,10 +118,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     // 2. Blurred Ambient Background Canvas (960x540 for lightweight GPU performance)
     const bgCanvas = bgCanvasRef.current;
     if (bgCanvas) {
-      if (!bgCtxRef.current) {
-        bgCtxRef.current = bgCanvas.getContext("2d", { alpha: false });
-      }
-      const bgCtx = bgCtxRef.current;
+      const bgCtx = bgCanvas.getContext("2d", { alpha: false });
       if (bgCtx) {
         bgCtx.drawImage(img, 0, 0, 960, 540);
       }
@@ -191,17 +178,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   }, [drawFramePair]);
 
   // requestAnimationFrame scroll-driven continuous canvas rendering loop
-  // Paused when intro section is off-screen to save GPU/CPU on the rest of the page
   useEffect(() => {
     let rafId: number;
-    let isVisible = true;
 
     const render = () => {
-      if (!isVisible) {
-        rafId = 0;
-        return;
-      }
-
       // Map 0.0 to 0.85 to frames 0 to 119; 0.85 to 1.0 holds frame 119 (final frame)
       const normalized = Math.min(targetProgressRef.current / 0.85, 1);
       const targetFrame = Math.min(Math.floor(normalized * TOTAL_FRAMES), TOTAL_FRAMES - 1);
@@ -225,29 +205,10 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       rafId = requestAnimationFrame(render);
     };
 
-    // Pause the RAF loop when the intro is scrolled completely off-screen
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        const nowVisible = entry ? entry.isIntersecting : true;
-        isIntroVisibleRef.current = nowVisible;
-        if (nowVisible && !isVisible) {
-          isVisible = true;
-          if (!rafId) rafId = requestAnimationFrame(render);
-        } else if (!nowVisible) {
-          isVisible = false;
-        }
-      },
-      { threshold: 0 },
-    );
-
-    const container = containerRef.current;
-    if (container) io.observe(container);
-
     rafId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(rafId);
-      io.disconnect();
     };
   }, [drawFramePair]);
 

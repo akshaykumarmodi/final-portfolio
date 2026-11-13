@@ -11,13 +11,12 @@ void main() {
 `;
 
 const FRAGMENT_SHADER = /* glsl */ `
-precision mediump float;
+precision highp float;
 
 uniform float uTime;
 uniform vec2 uResolution;
 uniform vec2 uMouse;
 uniform float uSpeedFactor;
-uniform float uQuality;
 
 varying vec2 vUv;
 
@@ -39,22 +38,15 @@ float vnoise(vec2 p) {
   );
 }
 
-// FBM: 5 octaves (desktop) or 3 octaves (mobile) driven by uQuality
+// 5-Octave FBM with rotation
 float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
   mat2 rot = mat2(1.6, 1.2, -1.2, 1.6);
-  // Loop 3 always; 2 more only on high-quality mode
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 5; i++) {
     v += a * vnoise(p);
     p = rot * p;
     a *= 0.5;
-  }
-  if (uQuality > 0.5) {
-    v += a * vnoise(p);
-    p = rot * p;
-    a *= 0.5;
-    v += a * vnoise(p);
   }
   return v;
 }
@@ -260,7 +252,6 @@ export function HeroFog() {
     const uResolutionLoc = gl.getUniformLocation(program, "uResolution");
     const uMouseLoc = gl.getUniformLocation(program, "uMouse");
     const uSpeedFactorLoc = gl.getUniformLocation(program, "uSpeedFactor");
-    const uQualityLoc = gl.getUniformLocation(program, "uQuality");
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -268,14 +259,6 @@ export function HeroFog() {
 
     const reduced = prefersReducedMotion();
     gl.uniform1f(uSpeedFactorLoc, reduced ? 0.10 : 0.40);
-
-    // On mobile / low-end devices use 3-octave FBM (quality=0); on desktop use 5-octave (quality=1)
-    const isMobileDevice =
-      typeof window !== "undefined" &&
-      (window.innerWidth < 768 ||
-        (typeof navigator !== "undefined" &&
-          ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) < 4));
-    gl.uniform1f(uQualityLoc, isMobileDevice ? 0.0 : 1.0);
 
     // Mouse tracking with smooth damping
     let targetX = 0;
@@ -296,9 +279,6 @@ export function HeroFog() {
     let isVisible = true;
     const startTime = performance.now();
 
-    // Bind program once — it never changes
-    gl.useProgram(program);
-
     const render = (now: number) => {
       if (!isVisible) {
         rafId = 0;
@@ -310,12 +290,14 @@ export function HeroFog() {
 
       const elapsed = (now - startTime) * 0.001;
 
+      gl.useProgram(program);
       gl.uniform1f(uTimeLoc, elapsed);
       gl.uniform2f(uMouseLoc, currentX, currentY);
 
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+      cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(render);
     };
 
@@ -330,10 +312,7 @@ export function HeroFog() {
         canvas.height = h;
         gl.viewport(0, 0, w, h);
         gl.uniform2f(uResolutionLoc, w, h);
-        if (isVisible) {
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          gl.drawArrays(gl.TRIANGLES, 0, 6);
-        }
+        render(performance.now());
       }
     };
 
@@ -344,29 +323,23 @@ export function HeroFog() {
     });
     ro.observe(container);
 
-    // Pause rendering immediately when offscreen to preserve 60/120fps GPU performance and smooth scrolling
+    // Pause rendering when offscreen to preserve 60fps GPU performance and smooth scrolling
     const io = new IntersectionObserver(
       ([entry]) => {
         const nextVisible = entry ? entry.isIntersecting : true;
         if (nextVisible && !isVisible) {
           isVisible = true;
-          if (!rafId) {
-            rafId = requestAnimationFrame(render);
-          }
+          render(performance.now());
         } else if (!nextVisible && isVisible) {
           isVisible = false;
-          if (rafId) {
-            cancelAnimationFrame(rafId);
-            rafId = 0;
-          }
         }
       },
-      { threshold: 0 },
+      { threshold: 0.01 },
     );
     io.observe(container);
 
     // Draw FRAME 0 IMMEDIATELY with balanced rising smoke
-    rafId = requestAnimationFrame(render);
+    render(performance.now());
 
     return () => {
       cancelAnimationFrame(rafId);

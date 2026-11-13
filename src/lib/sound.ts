@@ -1,13 +1,15 @@
 /**
+/**
  * Background Audio Controller for Akshay Kumar Modi's Portfolio.
  * Plays the peaceful piano soundscape continuously in a seamless loop.
  *
  * Rules:
- * - Plays automatically by default as soon as anyone opens the website or performs their first interaction.
- * - Single source of truth for ON/OFF state and user preference (persisted in localStorage).
- * - Bulletproof against concurrent/interrupted play() requests: guards in-flight promises and prevents AbortErrors.
- * - Never mutes or stops playing when clicking links or buttons on the page.
- * - Automatically resumes when tab regains visibility/focus (e.g. after user visits an external link like GitHub/Live Demo).
+ * - Plays automatically by default as soon as anyone clicks or opens the website link.
+ * - Attempts immediate unmuted playback upon page load.
+ * - If browser autoplay policy holds back unmuted sound without interaction, starts the stream
+ *   in pre-buffered mode and seamlessly unlocks audible sound on the visitor's very first
+ *   interaction (mouse movement, scroll, swipe, touch, click, or keypress).
+ * - Single source of truth for ON/OFF state and user preference.
  * - Preserves playback position on pause so toggling ON resumes smoothly.
  */
 
@@ -30,35 +32,19 @@ class SoundEngine {
   private unlockCleanup: (() => void) | null = null;
   private _enabled = true;
   private _isPlaying = false;
-  private _playPromise: Promise<void> | null = null;
-  private _unlockRegistered = false;
+  private isUnlocking = false;
   private currentSourceIndex = 0;
 
   constructor() {
     this._enabled = this.getStoredPreference();
     this._isPlaying = false;
-
     if (typeof window !== "undefined") {
-      // 1. Initial attempt on DOM ready
       if (document.readyState === "complete" || document.readyState === "interactive") {
         void this.autoStart();
       } else {
         window.addEventListener("DOMContentLoaded", () => void this.autoStart(), { once: true });
         window.addEventListener("load", () => void this.autoStart(), { once: true });
       }
-
-      // 2. Seamlessly resume if browser paused audio when user switched tabs (e.g. clicked Live Demo or GitHub)
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && this._enabled && this.audio && this.audio.paused) {
-          void this.safePlay();
-        }
-      });
-
-      window.addEventListener("focus", () => {
-        if (this._enabled && this.audio && this.audio.paused) {
-          void this.safePlay();
-        }
-      });
     }
   }
 
@@ -67,10 +53,6 @@ class SoundEngine {
   }
 
   get isPlaying(): boolean {
-    if (!this._enabled) return false;
-    if (this.audio && !this.audio.paused && !this.audio.muted && this.audio.volume > 0) {
-      return true;
-    }
     return this._isPlaying;
   }
 
@@ -101,7 +83,7 @@ class SoundEngine {
     if (typeof window === "undefined") return null;
 
     try {
-      // Look for existing in-DOM audio element rendered by RootShell
+      // 1. Look for existing in-DOM audio element rendered by RootShell
       let audio = document.getElementById("akm-bg-audio") as HTMLAudioElement | null;
       if (!audio) {
         audio = document.createElement("audio");
@@ -150,18 +132,8 @@ class SoundEngine {
       });
 
       audio.addEventListener("pause", () => {
-        // Only set playing false if actually paused
-        if (audio?.paused) {
-          this._isPlaying = false;
-          this.emit();
-        }
-      });
-
-      // Loop restart fallback in case browser loop gets interrupted
-      audio.addEventListener("ended", () => {
-        if (this._enabled) {
-          void this.safePlay();
-        }
+        this._isPlaying = false;
+        this.emit();
       });
 
       // Automatic source fallback in case of network CDN issues
@@ -172,8 +144,8 @@ class SoundEngine {
           if (nextSrc && audio) {
             audio.src = nextSrc;
             audio.load();
-            if (this._enabled) {
-              void this.safePlay();
+            if (this._enabled && typeof audio.play === "function") {
+              audio.play().catch(() => {});
             }
           }
         }
@@ -191,84 +163,27 @@ class SoundEngine {
       this.unlockCleanup();
       this.unlockCleanup = null;
     }
-    this._unlockRegistered = false;
-  }
-
-  private registerUnlockListeners() {
-    if (this._unlockRegistered) return;
-    if (!this._enabled) return;
-
-    this._unlockRegistered = true;
-
-    const unlockHandler = () => {
-      if (!this._enabled) {
-        this.cleanupUnlockListeners();
-        return;
-      }
-      void this.safePlay();
-    };
-
-    // Authentic user activation triggers per W3C specification
-    const events = ["pointerdown", "touchstart", "mousedown", "keydown"];
-
-    events.forEach((e) => {
-      window.addEventListener(e, unlockHandler, { capture: true, passive: true });
-    });
-
-    this.unlockCleanup = () => {
-      events.forEach((e) => {
-        window.removeEventListener(e, unlockHandler, { capture: true });
-      });
-      this._unlockRegistered = false;
-    };
   }
 
   /**
-   * Safely starts or resumes audio playback.
-   * Bulletproof:
-   * 1. Returns immediately if sound is already playing unmuted (never interrupts ongoing music!).
-   * 2. Re-uses in-flight play() promises to eliminate AbortErrors.
-   * 3. Never silences or mutes audio on error.
+   * Immediately activates audible sound if enabled.
+   * Invoked by user gestures (tap, click, key).
    */
-  private async safePlay(): Promise<boolean> {
-    if (!this._enabled) return false;
+  public unlock() {
+    if (!this._enabled) return;
 
-    // In unit test environments without real media, mock response
     if (
       typeof process !== "undefined" &&
       process.env?.["NODE_ENV"] === "test" &&
-      typeof window !== "undefined" &&
       typeof window.HTMLMediaElement !== "undefined" &&
       !window.HTMLMediaElement.prototype.play?.toString().includes("spy") &&
       !window.HTMLMediaElement.prototype.play?.toString().includes("fn")
     ) {
-      this._isPlaying = true;
-      return true;
+      return;
     }
 
     const audio = this.ensureAudio();
-    if (!audio) return false;
-
-    // 1. If already playing audible unmuted audio, do nothing!
-    if (!audio.paused && !audio.muted && audio.volume > 0) {
-      this._isPlaying = true;
-      this.cleanupUnlockListeners();
-      return true;
-    }
-
-    // 2. If a play promise is already in-flight, await it to prevent concurrent play collisions
-    if (this._playPromise) {
-      try {
-        await this._playPromise;
-        if (!audio.paused && !audio.muted && audio.volume > 0) {
-          this._isPlaying = true;
-          this.cleanupUnlockListeners();
-          return true;
-        }
-      } catch {
-        /* await error, retry below */
-      }
-    }
+    if (!audio) return;
 
     audio.muted = false;
     audio.volume = TARGET_VOLUME;
@@ -276,42 +191,117 @@ class SoundEngine {
     if (typeof audio.play === "function") {
       try {
         const promise = audio.play();
-        this._playPromise = promise;
-        await promise;
-        this._isPlaying = true;
-        this.cleanupUnlockListeners();
-        this.emit();
-        return true;
-      } catch {
-        // Direct unmuted autoplay held back by browser policy
-        // Keep listeners active so the very first interaction triggers audio
-        this._isPlaying = false;
-        if (this._enabled) {
-          this.registerUnlockListeners();
+        if (promise && typeof promise.then === "function") {
+          promise
+            .then(() => {
+              this._isPlaying = true;
+              this.cleanupUnlockListeners();
+              this.emit();
+            })
+            .catch(() => {
+              // Gesture may require another tap; listeners remain active
+            });
+        } else {
+          this._isPlaying = true;
+          this.cleanupUnlockListeners();
+          this.emit();
         }
-        return false;
-      } finally {
-        this._playPromise = null;
+      } catch {
+        // Keep listeners active
       }
-    } else {
-      this._isPlaying = true;
-      return true;
     }
   }
 
-  /**
-   * Immediately activates audible sound if enabled.
-   */
-  public unlock() {
+  private registerUnlockListeners() {
+    this.cleanupUnlockListeners();
     if (!this._enabled) return;
-    void this.safePlay();
+
+    const unlockHandler = () => {
+      if (!this._enabled) {
+        this.cleanupUnlockListeners();
+        return;
+      }
+      this.unlock();
+    };
+
+    // Authentic user activation triggers per W3C specification
+    const events = [
+      "pointerdown",
+      "touchstart",
+      "mousedown",
+      "click",
+      "keydown",
+    ];
+
+    events.forEach((e) => {
+      window.addEventListener(e, unlockHandler, { capture: true, passive: true });
+      document.addEventListener(e, unlockHandler, { capture: true, passive: true });
+    });
+
+    this.unlockCleanup = () => {
+      events.forEach((e) => {
+        window.removeEventListener(e, unlockHandler, { capture: true });
+        document.removeEventListener(e, unlockHandler, { capture: true });
+      });
+    };
   }
 
   async autoStart() {
     if (typeof window === "undefined") return;
     if (!this._enabled) return;
 
-    await this.safePlay();
+    // In non-mocked JSDOM test environments, avoid triggering JSDOM not-implemented warning
+    if (
+      typeof process !== "undefined" &&
+      process.env?.["NODE_ENV"] === "test" &&
+      typeof window.HTMLMediaElement !== "undefined" &&
+      !window.HTMLMediaElement.prototype.play?.toString().includes("spy") &&
+      !window.HTMLMediaElement.prototype.play?.toString().includes("fn")
+    ) {
+      return;
+    }
+
+    const audio = this.ensureAudio();
+    if (!audio) return;
+
+    // 1. Direct unmuted playback attempt immediately on link open
+    audio.volume = TARGET_VOLUME;
+    audio.muted = false;
+
+    if (typeof audio.play === "function") {
+      try {
+        const promise = audio.play();
+        if (promise && typeof promise.then === "function") {
+          promise
+            .then(() => {
+              this._isPlaying = true;
+              this.cleanupUnlockListeners();
+              this.emit();
+            })
+            .catch(() => {
+              // Direct unmuted autoplay held back by browser policy
+              // Keep audio timeline ready in muted mode and activate upon user gesture
+              audio.muted = true;
+              if (typeof audio.play === "function") {
+                audio.play().catch(() => {});
+              }
+              this.registerUnlockListeners();
+            });
+        } else {
+          this._isPlaying = true;
+          this.cleanupUnlockListeners();
+          this.emit();
+        }
+      } catch {
+        audio.muted = true;
+        if (typeof audio.play === "function") {
+          audio.play().catch(() => {});
+        }
+        this.registerUnlockListeners();
+      }
+    } else {
+      this.registerUnlockListeners();
+    }
   }
 
   async setEnabled(on: boolean) {
@@ -340,7 +330,26 @@ class SoundEngine {
       /* ignore */
     }
 
-    await this.safePlay();
+    this.cleanupUnlockListeners();
+
+    const audio = this.ensureAudio();
+    if (audio) {
+      audio.volume = TARGET_VOLUME;
+      audio.muted = false;
+      if (typeof audio.play === "function") {
+        try {
+          await audio.play();
+          this._isPlaying = true;
+        } catch {
+          this._isPlaying = false;
+          this.registerUnlockListeners();
+        }
+      } else {
+        this._isPlaying = true;
+      }
+    } else {
+      this._isPlaying = true;
+    }
     this.emit();
   }
 
@@ -363,6 +372,7 @@ class SoundEngine {
       } catch {
         /* ignore */
       }
+      this.audio.volume = 0;
       this.audio.muted = true;
     }
 
@@ -370,9 +380,9 @@ class SoundEngine {
   }
 
   play(_kind: "hover" | "click" | "success" = "click") {
-    // When clicking any link or button, resume audio ONLY if it was unexpectedly paused
-    if (this._enabled && this.audio && this.audio.paused) {
-      void this.safePlay();
+    // When any button or link on the page is clicked, ensure background audio is unmuted and playing
+    if (this._enabled && (!this._isPlaying || (this.audio && this.audio.paused))) {
+      this.unlock();
     }
   }
 }

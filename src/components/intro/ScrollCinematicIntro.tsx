@@ -42,6 +42,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Compute scroll progress through the intro track
   const updateProgress = useCallback(() => {
+    sound.unlock?.();
     const container = containerRef.current;
     if (!container) return;
 
@@ -216,6 +217,12 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     <div
       id="intro"
       ref={containerRef}
+      onClick={() => {
+        sound.unlock?.();
+      }}
+      onPointerDown={() => {
+        sound.unlock?.();
+      }}
       className="relative w-full h-[350vh] bg-[#070510] noise-overlay"
       aria-label="Cinematic Interactive Intro"
     >

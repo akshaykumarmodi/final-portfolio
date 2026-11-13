@@ -124,6 +124,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <audio
           id="akm-bg-audio"
           src="/audio/peaceful-piano-ambient.mp3"
+          autoPlay
           loop
           playsInline
           preload="auto"
@@ -142,32 +143,34 @@ function RootShell({ children }: { children: ReactNode }) {
                   a.volume = 0.75;
                   a.muted = false;
 
-                  function tryPlay() {
-                    if (!a || a.muted || !a.paused) return;
-                    var p = a.play();
-                    if (p !== undefined) {
-                      p.catch(function() {});
-                    }
-                  }
-
                   var p = a.play();
                   if (p !== undefined) {
                     p.catch(function() {
-                      // Autoplay restriction: wait for visitor's very first interaction
-                      var events = ['pointerdown', 'touchstart', 'mousedown', 'keydown'];
-                      function onFirstGesture() {
-                        events.forEach(function(ev) {
-                          window.removeEventListener(ev, onFirstGesture, true);
-                        });
+                      a.muted = true;
+                      if (typeof a.play === 'function') {
+                        a.play().catch(function(){});
+                      }
+
+                      function unlock() {
                         if (localStorage.getItem('akm-sound') === 'off') return;
                         a.muted = false;
                         a.volume = 0.75;
-                        if (a.paused) {
-                          tryPlay();
+                        if (a.paused && typeof a.play === 'function') {
+                          a.play().catch(function(){});
                         }
+                        cleanup();
                       }
-                      events.forEach(function(ev) {
-                        window.addEventListener(ev, onFirstGesture, { capture: true, once: true, passive: true });
+
+                      var events = ['pointerdown', 'touchstart', 'mousedown', 'click', 'keydown'];
+                      function cleanup() {
+                        events.forEach(function(e) {
+                          window.removeEventListener(e, unlock, true);
+                          document.removeEventListener(e, unlock, true);
+                        });
+                      }
+                      events.forEach(function(e) {
+                        window.addEventListener(e, unlock, { capture: true, once: true, passive: true });
+                        document.addEventListener(e, unlock, { capture: true, once: true, passive: true });
                       });
                     });
                   }

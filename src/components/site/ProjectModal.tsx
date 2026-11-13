@@ -39,7 +39,7 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           onClick={handleClose}
-          className="fixed inset-0 bg-[#04020a]/90 backdrop-blur-none sm:backdrop-blur-2xl"
+          className="fixed inset-0 bg-[#04020a]/85 backdrop-blur-2xl"
           aria-hidden
         />
 

@@ -208,7 +208,7 @@ export function Contact() {
           >
             {/* Status Card */}
             <div
-              className="relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 backdrop-blur-none sm:backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)]"
+              className="relative overflow-hidden rounded-[24px] bg-[#0c081c]/94 border border-white/15 p-6 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)]"
               style={{
                 borderLeft: "2.5px solid #06b6d4",
                 borderRight: "2.5px solid #a855f7",
@@ -296,7 +296,7 @@ export function Contact() {
             className="lg:col-span-7"
           >
             <div
-              className="relative overflow-hidden rounded-[26px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-8 backdrop-blur-none sm:backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.95)]"
+              className="relative overflow-hidden rounded-[26px] bg-[#0c081c]/94 border border-white/15 p-6 sm:p-8 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.95)]"
               style={{
                 borderLeft: "2.5px solid #a855f7",
                 borderRight: "2.5px solid #06b6d4",

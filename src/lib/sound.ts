@@ -17,9 +17,9 @@ const STORAGE_KEY = "akm-sound";
 
 // Web-safe static asset paths with reliable MIME support across CDNs/Vercel
 const AUDIO_SOURCES = [
+  "/audio/peaceful-piano-ambient.m4a",
   "/audio/peaceful-piano-ambient.mp3",
   "/audio/peaceful-piano.mp3",
-  "/audio/peaceful-piano-ambient.m4a",
   "/audio/Peaceful%20Piano%20%2B%20Nature%20Sounds%2020%20Minutes%20of%20Calm%20for%20Sleep.mp3",
 ];
 
@@ -120,10 +120,13 @@ class SoundEngine {
         audio.setAttribute("playsinline", "true");
         audio.setAttribute("webkit-playsinline", "true");
         audio.style.position = "fixed";
-        audio.style.top = "-9999px";
-        audio.style.left = "-9999px";
-        audio.style.opacity = "0";
+        audio.style.bottom = "0px";
+        audio.style.right = "0px";
+        audio.style.width = "1px";
+        audio.style.height = "1px";
+        audio.style.opacity = "0.01";
         audio.style.pointerEvents = "none";
+        audio.style.zIndex = "-1";
         audio.setAttribute("aria-hidden", "true");
         try {
           document.body.appendChild(audio);
@@ -217,40 +220,16 @@ class SoundEngine {
       void this.safePlay();
     };
 
-    const isMobile =
-      typeof navigator !== "undefined" &&
-      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints > 0 && /Mobile|Tablet/i.test(navigator.userAgent)));
-
-    // On desktop: all 15 natural events from 199e46d (mouse move, wheel, scroll, hover, click, keydown, etc.)
-    // On mobile: discrete tap/touch gestures only (touchstart, pointerdown, touchend, pointerup, click)
-    const desktopEvents = [
-      "pointerdown",
-      "pointerup",
-      "pointermove",
-      "touchstart",
+    // Natural visitor interactions to immediately start sound without requiring a button click
+    const events = [
       "touchend",
-      "touchmove",
-      "mousedown",
-      "mouseup",
-      "mousemove",
+      "pointerup",
       "click",
+      "touchstart",
+      "pointerdown",
       "keydown",
-      "wheel",
-      "scroll",
-      "mouseenter",
-      "focus",
+      "keyup",
     ];
-
-    const mobileEvents = [
-      "touchstart",
-      "pointerdown",
-      "touchend",
-      "pointerup",
-      "click",
-    ];
-
-    const events = isMobile ? mobileEvents : desktopEvents;
 
     events.forEach((e) => {
       window.addEventListener(e, unlockHandler, { capture: true, passive: true });
@@ -319,43 +298,36 @@ class SoundEngine {
       }
     }
 
-    // For mobile (iOS Safari / Chrome / Android): awaken audio session and Web Audio context
-    const isMobile =
-      typeof navigator !== "undefined" &&
-      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints > 0 && /Mobile|Tablet/i.test(navigator.userAgent)));
-
-    if (isMobile) {
-      try {
-        if (typeof window !== "undefined") {
-          if ("audioSession" in navigator) {
-            try {
-              (navigator as unknown as { audioSession: { type: string } }).audioSession.type = "playback";
-            } catch {
-              /* ignore */
-            }
-          }
-          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtx) {
-            const actx = (window as unknown as { __akm_actx?: AudioContext }).__akm_actx || new AudioCtx();
-            (window as unknown as { __akm_actx?: AudioContext }).__akm_actx = actx;
-            if (actx.state === "suspended") {
-              void actx.resume();
-            }
-            try {
-              const buffer = actx.createBuffer(1, 1, 22050);
-              const source = actx.createBufferSource();
-              source.buffer = buffer;
-              source.connect(actx.destination);
-              source.start(0);
-            } catch {
-              /* ignore */
-            }
+    // Awaken OS/browser audio subsystem
+    try {
+      if (typeof window !== "undefined") {
+        if ("audioSession" in navigator) {
+          try {
+            (navigator as unknown as { audioSession: { type: string } }).audioSession.type = "playback";
+          } catch {
+            /* ignore */
           }
         }
-      } catch {
-        /* ignore */
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          const actx = (window as unknown as { __akm_actx?: AudioContext }).__akm_actx || new AudioCtx();
+          (window as unknown as { __akm_actx?: AudioContext }).__akm_actx = actx;
+          if (actx.state === "suspended") {
+            void actx.resume();
+          }
+          try {
+            const buffer = actx.createBuffer(1, 1, 22050);
+            const source = actx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(actx.destination);
+            source.start(0);
+          } catch {
+            /* ignore */
+          }
+        }
       }
+    } catch {
+      /* ignore */
     }
 
     audio.muted = false;

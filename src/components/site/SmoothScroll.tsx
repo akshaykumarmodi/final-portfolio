@@ -36,7 +36,8 @@ export function SmoothScroll() {
           const instance = new Lenis({
             autoRaf: true,
             anchors: true,
-            lerp: 0.1,
+            duration: 0.85,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
             smoothWheel: true,
             wheelMultiplier: 1.0,
             touchMultiplier: 1.0,
@@ -51,7 +52,65 @@ export function SmoothScroll() {
         .catch(() => {});
     }
 
+    // Keyboard navigation handler: smoothly scrolls on ArrowUp/ArrowDown, PageUp/PageDown, Space, Home, End
+    // Completely eliminates jerky native scroll jumps that fight with smooth scroll systems
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable ||
+          target.closest('[role="dialog"]') ||
+          target.closest("[data-lenis-prevent]"))
+      ) {
+        return;
+      }
+
+      const instance = lenisRef.current;
+      if (!instance) return;
+
+      let delta = 0;
+      const step = 100;
+      const pageStep = window.innerHeight * 0.82;
+
+      if (e.key === "ArrowDown") {
+        delta = step;
+      } else if (e.key === "ArrowUp") {
+        delta = -step;
+      } else if (e.key === "PageDown") {
+        delta = pageStep;
+      } else if (e.key === "PageUp") {
+        delta = -pageStep;
+      } else if (e.key === " " && !e.shiftKey) {
+        delta = pageStep;
+      } else if (e.key === " " && e.shiftKey) {
+        delta = -pageStep;
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        instance.scrollTo(0, { duration: 0.45 });
+        return;
+      } else if (e.key === "End") {
+        e.preventDefault();
+        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        instance.scrollTo(maxScroll, { duration: 0.45 });
+        return;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+      const currentTarget = instance.targetScroll ?? window.scrollY;
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const nextTarget = Math.max(0, Math.min(maxScroll, currentTarget + delta));
+      instance.scrollTo(nextTarget, { duration: 0.32 });
+    };
+
+    window.addEventListener("keydown", onKeyDown, { passive: false });
+
     return () => {
+      window.removeEventListener("keydown", onKeyDown);
       if (lenisRef.current) {
         lenisRef.current.destroy();
         lenisRef.current = null;

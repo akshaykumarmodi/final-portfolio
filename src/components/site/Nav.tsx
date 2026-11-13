@@ -135,6 +135,7 @@ export function Nav() {
     };
 
     const onScroll = () => {
+      if (isNavigatingRef.current) return;
       if (!ticking) {
         ticking = true;
         requestAnimationFrame(checkActive);

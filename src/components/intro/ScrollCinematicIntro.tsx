@@ -42,21 +42,34 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     scrollToSection("home");
   }, [onEnterPortfolio]);
 
-  // Compute scroll progress through the intro track
-  const updateProgress = useCallback(() => {
+  const scrollableRef = useRef(0);
+
+  const updateScrollDimensions = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
+    scrollableRef.current = Math.max(1, container.offsetHeight - window.innerHeight);
+  }, []);
 
-    const rect = container.getBoundingClientRect();
-    const scrollable = container.offsetHeight - window.innerHeight;
-    if (scrollable <= 0) return;
+  // Compute scroll progress through the intro track with zero forced reflows
+  const updateProgress = useCallback(() => {
+    const scrollable = scrollableRef.current || (containerRef.current ? Math.max(1, containerRef.current.offsetHeight - window.innerHeight) : 1);
+    const scrollY = window.scrollY || window.pageYOffset || 0;
 
-    const raw = -rect.top / scrollable;
-    const progress = Math.min(Math.max(raw, 0), 1);
+    // Fast-path: when user has scrolled past the intro, clamp once and bail out with zero layout cost
+    if (scrollY >= scrollable) {
+      if (targetProgressRef.current !== 1) {
+        targetProgressRef.current = 1;
+        setIsNearEnd(true);
+      }
+      return;
+    }
+
+    const progress = Math.min(Math.max(scrollY / scrollable, 0), 1);
     targetProgressRef.current = progress;
 
     // Near ending frames (>= 70% scroll progress), highlight/enable interactive Enter Portfolio
-    setIsNearEnd(progress >= 0.70);
+    const nearEnd = progress >= 0.70;
+    setIsNearEnd((prev) => (prev !== nearEnd ? nearEnd : prev));
   }, []);
 
   // Dynamically size foreground canvas to device physical pixel resolution (capped at native 1920x1080 to prevent 4K memory thrashing)
@@ -78,21 +91,24 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     }
   }, []);
 
-  // Scroll listener synchronization (single passive listener)
+  // Scroll listener synchronization (single passive listener with cached dimensions)
   useEffect(() => {
+    updateScrollDimensions();
+    updateCanvasResolution();
+    updateProgress();
+
     window.addEventListener("scroll", updateProgress, { passive: true });
     window.addEventListener("resize", updateProgress);
     window.addEventListener("resize", updateCanvasResolution);
-
-    updateProgress();
-    updateCanvasResolution();
+    window.addEventListener("resize", updateScrollDimensions);
 
     return () => {
       window.removeEventListener("scroll", updateProgress);
       window.removeEventListener("resize", updateProgress);
       window.removeEventListener("resize", updateCanvasResolution);
+      window.removeEventListener("resize", updateScrollDimensions);
     };
-  }, [updateProgress, updateCanvasResolution]);
+  }, [updateProgress, updateCanvasResolution, updateScrollDimensions]);
 
   // Synchronized draw helper for both sharp foreground and blurred background canvases
   const drawFramePair = useCallback((idx: number) => {

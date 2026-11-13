@@ -1,6 +1,9 @@
-import trustmeshImg from "@/assets/project-trustmesh.webp";
+import trustmeshImg from "@/assets/project-trustmesh.png";
 import aiTutorImg from "@/assets/project-ai-tutor.webp";
+import spotifyImg from "@/assets/project-spotify.png";
 import portfolioImg from "@/assets/project-portfolio.webp";
+
+export { trustmeshImg, aiTutorImg, spotifyImg, portfolioImg };
 
 export type Project = {
   id: string;
@@ -22,6 +25,70 @@ export type Project = {
   createdAt?: string | undefined;
 };
 
+/**
+ * Returns the reliable bundled asset image for a project based on its slug or title.
+ */
+export function getDefaultProjectImage(slugOrTitle?: string | null): string {
+  const key = (slugOrTitle || "").toLowerCase();
+  if (key.includes("trustmesh") || key.includes("trust-mesh")) return trustmeshImg;
+  if (key.includes("study") || key.includes("tutor") || key.includes("ai-study")) return aiTutorImg;
+  if (key.includes("spotify")) return spotifyImg;
+  return portfolioImg;
+}
+
+/**
+ * Robust image resolver that guarantees valid, production-ready asset URLs across
+ * Vite dev mode, production builds, and Vercel serverless environments.
+ */
+export function resolveProjectImage(
+  imagePath?: string | null,
+  slugOrTitle?: string | null,
+): string {
+  if (!imagePath || typeof imagePath !== "string" || !imagePath.trim()) {
+    return getDefaultProjectImage(slugOrTitle);
+  }
+
+  const trimmed = imagePath.trim();
+
+  // 1. Data URLs and Blob URLs are used as-is
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed;
+  }
+
+  // 2. Absolute HTTP/HTTPS URLs are used as-is
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  // 3. Known uploaded filename matches or bundled asset references
+  if (
+    trimmed.includes("proj-1794321858226") ||
+    trimmed.includes("project-trustmesh")
+  ) {
+    return trustmeshImg;
+  }
+  if (trimmed.includes("project-ai-tutor")) {
+    return aiTutorImg;
+  }
+  if (
+    trimmed.includes("proj-1794321984945") ||
+    trimmed.includes("project-spotify") ||
+    trimmed.includes("spotify")
+  ) {
+    return spotifyImg;
+  }
+  if (trimmed.includes("project-portfolio")) {
+    return portfolioImg;
+  }
+
+  // 4. Any other public /uploads/ or absolute paths
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+
+  return trimmed || getDefaultProjectImage(slugOrTitle);
+}
+
 /** All portfolio projects live here, bundled with the site (local baseline). */
 export const PROJECTS: Project[] = [
   {
@@ -36,6 +103,7 @@ export const PROJECTS: Project[] = [
     category: "Open Source",
     tech: ["React", "Vite", "Tailwind CSS", "FastAPI", "Python", "SQLite"],
     image: trustmeshImg,
+    screenshots: [],
     githubUrl: "https://github.com/akshaykumarmodi/Trust-Mesh-prefect-version",
     liveUrl: "https://trust-mesh-prefect-version.vercel.app/",
     featured: true,
@@ -55,30 +123,30 @@ export const PROJECTS: Project[] = [
     category: "AI / ML",
     tech: ["React", "TypeScript", "Python", "Gemini AI", "Tailwind CSS"],
     image: aiTutorImg,
+    screenshots: [],
     githubUrl: "https://github.com/akshaykumarmodi/Student-AI-Tutor",
     liveUrl: "https://student-ai-site-three.vercel.app/",
-    featured: true,
+    featured: false,
     published: true,
     sortOrder: 2,
     createdAt: "2026-11-09T07:28:42.74568+00:00",
   },
   {
-    id: "0077f714-be3b-426f-8dc2-5482ec7267aa",
-    slug: "personal-portfolio",
-    title: "Personal Portfolio",
-    tagline: "Cinematic 3D web experience with WebGL & shaders",
-    description:
-      "A cinematic interactive portfolio featuring 3D experiences, physics simulations, custom GLSL shaders, sound synthesis, and creative frontend engineering.",
-    fullDescription:
-      "Designed and developed from first principles to embody the intersection of creative engineering and visual artistry. Powered by TanStack Start, React Three Fiber, WebGL shaders, Framer Motion, and the Web Audio API, the portfolio creates an immersive dark-aurora digital universe complete with reactive lighting, fluid physics, and an interactive 3D ID badge card.",
-    category: "Creative",
-    tech: ["React", "TypeScript", "Three.js", "Tailwind CSS", "TanStack Start"],
-    image: portfolioImg,
+    id: "proj-1794321758709-t8g59",
+    slug: "spotify-clone",
+    title: "spotify clone",
+    tagline: "spotify frontend",
+    description: "The project is created when i entered in journey",
+    fullDescription: "A project that develops my interest and give me a path",
+    category: "Web Apps",
+    tech: ["React", "TypeScript", "Tailwind CSS"],
+    image: spotifyImg,
+    screenshots: [],
     githubUrl: "https://github.com/akshaykumarmodi/spotifyclone1",
     liveUrl: "https://akshaykumarmodi.github.io/spotifyclone1/",
-    featured: true,
+    featured: false,
     published: true,
     sortOrder: 3,
-    createdAt: "2026-11-09T07:28:42.74568+00:00",
+    createdAt: "2026-11-10T14:42:38.709Z",
   },
 ];

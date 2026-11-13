@@ -2,7 +2,7 @@ import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { X, ExternalLink, Github, Sparkles, Layers, ArrowLeft } from "lucide-react";
-import type { Project } from "@/content/projects";
+import { type Project, resolveProjectImage, getDefaultProjectImage } from "@/content/projects";
 import { useSound } from "@/hooks/use-sound";
 import { Button } from "@/components/ui/button";
 
@@ -85,11 +85,17 @@ function ModalContent({ project, onClose, handleClose }: { project: Project; onC
           {/* Project Cover Image */}
           <div className="relative mt-6 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#120d24] shadow-2xl">
             <img
-              src={project.image || "/placeholder.svg"}
+              src={resolveProjectImage(project.image, project.slug || project.title)}
               alt={project.title}
               className="size-full object-cover select-none"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "/placeholder.svg";
+                const target = e.target as HTMLImageElement;
+                const fallback = getDefaultProjectImage(project.slug || project.title);
+                if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                  target.src = fallback;
+                } else {
+                  target.src = "/placeholder.svg";
+                }
               }}
             />
             {/* Subtle atmospheric vignette */}

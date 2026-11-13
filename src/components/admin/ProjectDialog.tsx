@@ -14,7 +14,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import type { Project } from "@/content/projects";
+import { type Project, resolveProjectImage, getDefaultProjectImage } from "@/content/projects";
 import { Button } from "@/components/ui/button";
 import { uploadImageFn } from "@/lib/server-api";
 
@@ -501,11 +501,17 @@ function DialogContent({ open, project, onClose, onSave }: ProjectDialogProps) {
                 <div className="group relative rounded-2xl border border-white/15 bg-[#140f26]/90 p-3 overflow-hidden transition-all duration-300 hover:border-primary-glow/50">
                   <div className="relative aspect-[16/9] max-h-56 w-full overflow-hidden rounded-xl bg-black/60 border border-white/10 flex items-center justify-center">
                     <img
-                      src={image}
+                      src={resolveProjectImage(image, slug || title)}
                       alt="Project preview"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        const target = e.target as HTMLImageElement;
+                        const fallback = getDefaultProjectImage(slug || title);
+                        if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                          target.src = fallback;
+                        } else {
+                          target.src = "/placeholder.svg";
+                        }
                       }}
                     />
 

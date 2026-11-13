@@ -20,7 +20,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { useSound } from "@/hooks/use-sound";
 import { prefersReducedMotion } from "@/lib/scroll";
 import { Button } from "@/components/ui/button";
-import type { Project } from "@/content/projects";
+import { type Project, resolveProjectImage, getDefaultProjectImage } from "@/content/projects";
 
 // ---------------------------------------------------------------------------
 // 3D Tilt Card Component with Illuminated Edges & Specular Reflection
@@ -227,13 +227,19 @@ function ProjectCard({
         {/* Project Thumbnail Image with Category Badge */}
         <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-white/10 bg-[#120d24] group">
           <img
-            src={project.image || "/placeholder.svg"}
+            src={resolveProjectImage(project.image, project.slug || project.title)}
             alt={project.title}
             className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             loading={position === "center" ? "eager" : "lazy"}
             decoding="async"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = "/placeholder.svg";
+              const target = e.target as HTMLImageElement;
+              const fallback = getDefaultProjectImage(project.slug || project.title);
+              if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                target.src = fallback;
+              } else {
+                target.src = "/placeholder.svg";
+              }
             }}
           />
 
@@ -417,9 +423,10 @@ export function Projects() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     filteredProjects.forEach((p) => {
-      if (p.image) {
+      const src = resolveProjectImage(p.image, p.slug || p.title);
+      if (src) {
         const img = new Image();
-        img.src = p.image;
+        img.src = src;
       }
     });
   }, [filteredProjects]);

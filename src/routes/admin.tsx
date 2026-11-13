@@ -46,7 +46,7 @@ import { useJourney } from "@/hooks/use-journey";
 import { ProjectDialog } from "@/components/admin/ProjectDialog";
 import { MilestoneDialog } from "@/components/admin/MilestoneDialog";
 import { Button } from "@/components/ui/button";
-import type { Project } from "@/content/projects";
+import { type Project, resolveProjectImage, getDefaultProjectImage } from "@/content/projects";
 import type { JourneyMilestone } from "@/content/journey";
 import type { ContactSubmission, SiteSettings } from "@/lib/server-db";
 import type { SmtpStatusResult } from "@/lib/email-service";
@@ -741,11 +741,17 @@ function AdminPage() {
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <img
-                      src={p.image || "/placeholder.svg"}
+                      src={resolveProjectImage(p.image, p.slug || p.title)}
                       alt={p.title}
                       className="size-16 rounded-xl object-cover border border-white/10 shrink-0 bg-black/40"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        const target = e.target as HTMLImageElement;
+                        const fallback = getDefaultProjectImage(p.slug || p.title);
+                        if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                          target.src = fallback;
+                        } else {
+                          target.src = "/placeholder.svg";
+                        }
                       }}
                     />
                     <div className="min-w-0">

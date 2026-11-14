@@ -171,7 +171,8 @@ describe("Admin & Content Persistence Engine", () => {
       const { result } = renderHook(() => useJourney());
       expect(result.current.allMilestones.length).toBe(5);
       expect(result.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
-      expect(result.current.allMilestones[4]?.title).toBe("Shipping Real-World Systems");
+      expect(result.current.allMilestones[3]?.title).toBe("Shipping Real-World Systems");
+      expect(result.current.allMilestones[4]?.title).toBe("Looking Ahead – The Future");
     });
 
     it("synchronizes desktop and mobile devices from the shared /api/journey single source of truth", async () => {

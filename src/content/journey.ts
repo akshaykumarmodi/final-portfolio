@@ -58,9 +58,9 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     "id": "m-02-learning",
     "slug": "foundations-mastery",
     "stage": "learning",
-    "title": "Mastering the Modern Stack",
+    "title": "Exploring Data Structures & Algorithms (DSA)",
     "subtitle": "Frontend Architecture & System Internals",
-    "description": "Deep-dived into modern TypeScript, distributed architectures, database design, and applied LLM engineering. Began crafting custom GLSL shaders and WebGL graphics experiments.",
+    "description": "Started exploring Data Structures and Algorithms to strengthen my problem-solving skills and develop a deeper understanding of programming fundamentals. Learning to write efficient code, understand algorithms, and approach complex challenges with logical thinking.",
     "year": "2024",
     "dateRange": "Late 2024",
     "category": "Core Skills",
@@ -72,33 +72,9 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     "tags": [
       "React",
       "TypeScript",
-      "WebGL",
-      "FastAPI"
+      "Algorithms"
     ],
     "imageUrl": "/assets/milestones/m2-learning.svg"
-  },
-  {
-    "id": "m-03-building",
-    "slug": "creative-engineering",
-    "stage": "building",
-    "title": "Creative Engineering & 3D Web",
-    "subtitle": "Interactive Digital Experiences",
-    "description": "Engineered physics-based simulations, custom GLSL visual shaders, procedural Web Audio engines, and rich 3D user interfaces. Blending mathematical precision with artistic storytelling.",
-    "year": "2025",
-    "dateRange": "Early 2025",
-    "category": "Creative Tech",
-    "iconName": "Sparkles",
-    "status": "completed",
-    "highlighted": false,
-    "published": true,
-    "sortOrder": 3,
-    "tags": [
-      "Three.js",
-      "Shaders",
-      "Framer Motion",
-      "Web Audio"
-    ],
-    "imageUrl": "/assets/milestones/m3-building.svg"
   },
   {
     "id": "m-04-hackathons",
@@ -107,14 +83,14 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     "title": "Competitive Hackathons",
     "subtitle": "Rapid Prototyping & Innovation",
     "description": "Collaborated in intensive 24-48 hour hackathons, shipping functional AI prototypes, solving developer reputation challenges, and demoing live to developer and open-source communities.",
-    "year": "2026",
-    "dateRange": "Mid 2026",
+    "year": "2025",
+    "dateRange": "Mid 2025",
     "category": "Competitions",
     "iconName": "Trophy",
-    "status": "in-progress",
+    "status": "completed",
     "highlighted": false,
     "published": true,
-    "sortOrder": 4,
+    "sortOrder": 3,
     "tags": [
       "Hackathons",
       "Rapid Shipping",
@@ -130,18 +106,40 @@ export const JOURNEY_MILESTONES: JourneyMilestone[] = [
     "subtitle": "TrustMesh & Study Tutor AI",
     "description": "Shipped TrustMesh (an open-source contributor reputation network against AI slop) and Study Tutor AI (an adaptive interactive educational learning assistant) for active users.",
     "year": "2026",
-    "dateRange": "2026",
+    "dateRange": "Early 2026",
     "category": "Products & Open Source",
     "iconName": "Rocket",
     "status": "completed",
     "highlighted": false,
     "published": true,
-    "sortOrder": 5,
+    "sortOrder": 4,
     "tags": [
       "TrustMesh",
       "Study Tutor AI",
       "Open Source"
     ],
     "imageUrl": "/assets/milestones/m5-projects.svg"
+  },
+  {
+    "id": "m-1794616042164-f7ir",
+    "slug": "looking-ahead-the-future",
+    "stage": "future",
+    "title": "Looking Ahead – The Future",
+    "subtitle": "Building the Next Intelligent Web",
+    "description": "Looking forward to exploring new technologies, mastering Artificial Intelligence, building innovative projects, and turning bold ideas into reality. My journey has just begun, and I'm excited to keep learning, creating, and making a meaningful impact through technology.",
+    "year": "2026",
+    "dateRange": "2026",
+    "category": "Horizon",
+    "iconName": "Sparkles",
+    "status": "in-progress",
+    "highlighted": false,
+    "published": true,
+    "sortOrder": 5,
+    "tags": [
+      "AI",
+      "Innovation",
+      "Future Vision"
+    ],
+    "createdAt": "2026-11-14T00:27:22.164Z"
   }
 ];

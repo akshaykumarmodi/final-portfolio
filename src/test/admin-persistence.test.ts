@@ -148,24 +148,20 @@ describe("Admin & Content Persistence Engine", () => {
       expect(refreshedResult.current.allMilestones.some((m) => m.title === "NASA Space Apps Global Winner")).toBe(true);
     });
 
-    it("discards legacy stale cached milestones and renders authentic 5 milestones starting with Pursuing B.Tech", async () => {
-      // Simulate mobile device that previously stored stale m-02 milestone
-      localStorage.setItem(
-        "akm_portfolio_journey",
-        JSON.stringify([
-          { id: "m-02-learning", title: "Mastering the Modern Stack", stage: "learning", published: true, sortOrder: 1 },
-          { id: "m-03-building", title: "Creative Engineering", stage: "building", published: true, sortOrder: 2 },
-        ]),
-      );
+    it("preserves customized milestones across page navigations and simulated refresh", async () => {
+      // Simulate user who edited milestones in Admin portal
+      const customMilestones = [
+        { id: "m-custom-1", title: "Custom Milestone 1", stage: "learning" as const, published: true, sortOrder: 1, year: "2025", dateRange: "2025", category: "Milestone", iconName: "Sparkles", status: "completed" as const, highlighted: false, description: "Custom desc", slug: "custom-1" },
+        { id: "m-custom-2", title: "Custom Milestone 2", stage: "building" as const, published: true, sortOrder: 2, year: "2025", dateRange: "2025", category: "Milestone", iconName: "Sparkles", status: "completed" as const, highlighted: false, description: "Custom desc 2", slug: "custom-2" },
+      ];
+      localStorage.setItem("akm_portfolio_journey", JSON.stringify(customMilestones));
       localStorage.setItem("akm_journey_customized", "true");
 
       const { result } = renderHook(() => useJourney());
-      expect(result.current.allMilestones.length).toBe(5);
-      expect(result.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
-      expect(result.current.allMilestones[0]?.id).toBe("m-01-start");
-
-      // Verify that the stale legacy cache was purged
-      expect(localStorage.getItem("akm_journey_customized")).toBeNull();
+      expect(result.current.allMilestones.length).toBe(2);
+      expect(result.current.allMilestones[0]?.title).toBe("Custom Milestone 1");
+      expect(result.current.allMilestones[0]?.id).toBe("m-custom-1");
+      expect(localStorage.getItem("akm_journey_customized")).toBe("true");
     });
 
     it("ensures mobile visitors without local customization always render authentic 5 milestones", async () => {

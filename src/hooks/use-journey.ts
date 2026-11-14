@@ -17,12 +17,6 @@ function getCachedJourney(): JourneyMilestone[] | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Discard stale legacy cache that starts with old m-02 milestone
-      if (parsed[0]?.id === "m-02-learning") {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(CUSTOMIZED_KEY);
-        return null;
-      }
       return parsed;
     }
   } catch (e) {
@@ -67,30 +61,32 @@ export function useJourney() {
       setIsLoading(true);
       setError(null);
 
+      const cached = getCachedJourney();
       const isCustomizedLocally =
         typeof window !== "undefined" &&
-        localStorage.getItem(CUSTOMIZED_KEY) === "true";
+        (localStorage.getItem(CUSTOMIZED_KEY) === "true" ||
+          (cached && cached.length > 0 && JSON.stringify(cached) !== JSON.stringify(JOURNEY_MILESTONES)));
 
-      // If user customized journey in the Admin Portal, preserve their customizations across page refreshes!
-      if (isCustomizedLocally) {
-        const cached = getCachedJourney();
-        if (cached && cached.length > 0) {
-          setMilestones(cached);
-
-          // Re-sync server in the background if admin token is present
-          const token = getAdminToken();
-          if (token) {
-            reorderMilestonesFn({ data: { token, milestones: cached } }).catch(() => {});
-            if (typeof window !== "undefined") {
-              fetch("/api/journey", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ milestones: cached }),
-              }).catch(() => {});
-            }
-          }
-          return;
+      // If user customized journey in the Admin Portal, preserve their customizations across page navigations and refreshes!
+      if (isCustomizedLocally && cached && cached.length > 0) {
+        setMilestones(cached);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(CUSTOMIZED_KEY, "true");
         }
+
+        // Re-sync server in the background if admin token is present
+        const token = getAdminToken();
+        if (token) {
+          reorderMilestonesFn({ data: { token, milestones: cached } }).catch(() => {});
+          if (typeof window !== "undefined") {
+            fetch("/api/journey", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ milestones: cached }),
+            }).catch(() => {});
+          }
+        }
+        return;
       }
 
       let serverData: JourneyMilestone[] | null = null;
@@ -123,11 +119,24 @@ export function useJourney() {
         } catch {}
       }
 
+      // Check again after async fetch to make sure an admin action didn't customize while waiting
+      const hasCustomizedNow =
+        typeof window !== "undefined" &&
+        (localStorage.getItem(CUSTOMIZED_KEY) === "true" ||
+          Boolean(getCachedJourney() && JSON.stringify(getCachedJourney()) !== JSON.stringify(JOURNEY_MILESTONES)));
+
+      if (hasCustomizedNow) {
+        const freshCached = getCachedJourney();
+        if (freshCached && freshCached.length > 0) {
+          setMilestones(freshCached);
+          return;
+        }
+      }
+
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         setMilestones(serverData);
         saveCachedJourney(serverData, false, false);
       } else {
-        const cached = getCachedJourney();
         if (cached && cached.length > 0) {
           setMilestones(cached);
         } else {
@@ -192,7 +201,6 @@ export function useJourney() {
   // Add milestone (Admin operation)
   const addMilestone = async (data: Partial<JourneyMilestone>) => {
     const token = getAdminToken();
-    const maxSort = milestones.reduce((m, item) => Math.max(m, item.sortOrder), 0);
     const id = data.id || `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const created: JourneyMilestone = {
       id,
@@ -210,18 +218,23 @@ export function useJourney() {
       status: data.status || "completed",
       highlighted: data.highlighted ?? false,
       published: data.published ?? true,
-      sortOrder: data.sortOrder ?? maxSort + 1,
+      sortOrder: data.sortOrder ?? 999,
       tags: data.tags || [],
       createdAt: new Date().toISOString(),
       ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}),
     };
 
-    const next = [...milestones.filter((m) => m.id !== created.id), created].sort(
-      (a, b) => a.sortOrder - b.sortOrder,
-    );
-
-    setMilestones(next);
-    saveCachedJourney(next, true, true);
+    let nextResult: JourneyMilestone[] = [];
+    setMilestones((prev) => {
+      const maxSort = prev.reduce((m, item) => Math.max(m, item.sortOrder), 0);
+      const withSort = { ...created, sortOrder: data.sortOrder ?? maxSort + 1 };
+      const next = [...prev.filter((m) => m.id !== withSort.id), withSort].sort(
+        (a, b) => a.sortOrder - b.sortOrder,
+      );
+      nextResult = next;
+      saveCachedJourney(next, true, true);
+      return next;
+    });
 
     // 1. Sync to shared /api/journey REST backend
     try {
@@ -232,7 +245,7 @@ export function useJourney() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ milestone: created, milestones: next }),
+          body: JSON.stringify({ milestone: created, milestones: nextResult }),
         });
       }
     } catch (e) {
@@ -250,16 +263,21 @@ export function useJourney() {
   // Update milestone (Admin operation)
   const updateMilestone = async (id: string, updates: Partial<JourneyMilestone>) => {
     const token = getAdminToken();
-    const current = milestones.find((m) => m.id === id);
-    if (!current) throw new Error("Milestone not found");
-    const updated: JourneyMilestone = { ...current, ...updates };
+    let updatedItem: JourneyMilestone | undefined;
+    let nextResult: JourneyMilestone[] = [];
 
-    const next = milestones.map((m) => (m.id === id ? updated : m)).sort(
-      (a, b) => a.sortOrder - b.sortOrder,
-    );
+    setMilestones((prev) => {
+      const current = prev.find((m) => m.id === id);
+      updatedItem = current ? { ...current, ...updates } : (updates as JourneyMilestone);
+      const next = prev.map((m) => (m.id === id ? updatedItem! : m)).sort(
+        (a, b) => a.sortOrder - b.sortOrder,
+      );
+      nextResult = next;
+      saveCachedJourney(next, true, true);
+      return next;
+    });
 
-    setMilestones(next);
-    saveCachedJourney(next, true, true);
+    const finalItem = updatedItem || ({ ...updates, id } as JourneyMilestone);
 
     // 1. Sync to shared /api/journey REST backend
     try {
@@ -270,7 +288,7 @@ export function useJourney() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ milestone: updated, milestones: next }),
+          body: JSON.stringify({ milestone: finalItem, milestones: nextResult }),
         });
       }
     } catch (e) {
@@ -284,16 +302,20 @@ export function useJourney() {
       });
     } catch {}
 
-    return updated;
+    return finalItem;
   };
 
   // Delete milestone (Admin operation)
   const deleteMilestone = async (id: string) => {
     const token = getAdminToken();
-    const next = milestones.filter((m) => m.id !== id);
+    let nextResult: JourneyMilestone[] = [];
 
-    setMilestones(next);
-    saveCachedJourney(next, true, true);
+    setMilestones((prev) => {
+      const next = prev.filter((m) => m.id !== id);
+      nextResult = next;
+      saveCachedJourney(next, true, true);
+      return next;
+    });
 
     // 1. Sync to shared /api/journey REST backend
     try {
@@ -304,7 +326,7 @@ export function useJourney() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ deleteId: id, milestones: next }),
+          body: JSON.stringify({ deleteId: id, milestones: nextResult }),
         });
       }
     } catch (e) {

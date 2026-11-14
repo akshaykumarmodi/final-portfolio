@@ -126,7 +126,7 @@ function RootShell({ children }: { children: ReactNode }) {
           src="/audio/peaceful-piano-ambient.mp3"
           loop
           playsInline
-          preload="auto"
+          preload="none"
           aria-hidden="true"
           style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
         />

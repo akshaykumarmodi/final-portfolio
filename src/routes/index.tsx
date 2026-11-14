@@ -33,6 +33,12 @@ export const Route = createFileRoute("/")({
     links: [
       {
         rel: "preload",
+        href: "/intro-frames/frame-001.jpg",
+        as: "image",
+        type: "image/jpeg",
+      },
+      {
+        rel: "preload",
         href: portraitUrl,
         as: "image",
         type: "image/webp",

@@ -13,6 +13,20 @@ function getFrameUrl(index: number) {
   return `/intro-frames/frame-${pad}.jpg`;
 }
 
+// Module-level early prefetch for Frame 0 so it begins downloading before component mounts
+let moduleCachedFrame0: HTMLImageElement | null = null;
+if (typeof window !== "undefined") {
+  const preImg = new Image();
+  preImg.src = getFrameUrl(0);
+  if (preImg.complete) {
+    moduleCachedFrame0 = preImg;
+  } else {
+    preImg.onload = () => {
+      moduleCachedFrame0 = preImg;
+    };
+  }
+}
+
 interface ScrollCinematicIntroProps {
   onEnterPortfolio?: () => void;
 }
@@ -31,7 +45,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
   const loadedFlagsRef = useRef<boolean[]>(new Array(TOTAL_FRAMES).fill(false));
 
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(() => Boolean(moduleCachedFrame0?.complete));
   const [isNearEnd, setIsNearEnd] = useState(false);
   const { enabled, isPlaying, toggle, isMobile } = useSound();
 
@@ -113,8 +127,9 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
 
   // Synchronized draw helper for both sharp foreground and blurred background canvases
   const drawFramePair = useCallback((idx: number) => {
-    const img = imagesRef.current[idx];
-    if (!img || !loadedFlagsRef.current[idx]) return;
+    const img = imagesRef.current[idx] || (idx === 0 ? moduleCachedFrame0 : null);
+    if (!img) return;
+    if (idx !== 0 && !loadedFlagsRef.current[idx]) return;
     if (lastDrawnIndexRef.current === idx) return;
 
     // 1. Sharp Foreground Canvas (Full physical resolution + high-quality smoothing)
@@ -150,34 +165,59 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
     lastDrawnIndexRef.current = idx;
   }, []);
 
-  // Preload all 120 sequential frames progressively
+  // Preload frames progressively: Frame 0 first for instant zero-flash initial display,
+  // followed by immediate scrubbing buffer, then background queue
   useEffect(() => {
     let isCancelled = false;
 
-    // 1. Immediately load frame 0 (first frame) for instant zero-flash initial paint
-    const img0 = new Image();
-    img0.src = getFrameUrl(0);
-    img0.onload = () => {
-      if (isCancelled) return;
-      imagesRef.current[0] = img0;
-      loadedFlagsRef.current[0] = true;
-      setIsLoaded(true);
-      drawFramePair(0);
-    };
-
-    // 2. Preload final frame and key milestones early (for instant scrubbing and hold)
-    const priorityIndices = [TOTAL_FRAMES - 1, 30, 60, 90];
-    priorityIndices.forEach((idx) => {
+    // Helper to safely load and cache an individual frame
+    const loadFrame = (idx: number, onDone?: () => void) => {
+      if (isCancelled || idx < 0 || idx >= TOTAL_FRAMES) return;
+      if (loadedFlagsRef.current[idx] && imagesRef.current[idx]) {
+        onDone?.();
+        return;
+      }
       const img = new Image();
       img.src = getFrameUrl(idx);
-      img.onload = () => {
+      const finish = () => {
         if (isCancelled) return;
         imagesRef.current[idx] = img;
         loadedFlagsRef.current[idx] = true;
+        onDone?.();
       };
+      if (img.complete) {
+        finish();
+      } else {
+        img.onload = finish;
+        img.onerror = () => {
+          if (isCancelled) return;
+          onDone?.();
+        };
+      }
+    };
+
+    // 1. Immediately ensure Frame 0 is ready and paint it right away
+    if (moduleCachedFrame0 && (moduleCachedFrame0.complete || moduleCachedFrame0.naturalWidth > 0)) {
+      imagesRef.current[0] = moduleCachedFrame0;
+      loadedFlagsRef.current[0] = true;
+      setIsLoaded(true);
+      drawFramePair(0);
+    } else {
+      loadFrame(0, () => {
+        if (isCancelled) return;
+        setIsLoaded(true);
+        drawFramePair(0);
+      });
+    }
+
+    // 2. Immediate scrubbing buffer: load immediate forward frames (1..10) and final hold frame (TOTAL_FRAMES - 1)
+    const priorityIndices = [TOTAL_FRAMES - 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 30, 60, 90];
+    priorityIndices.forEach((idx) => {
+      loadFrame(idx);
     });
 
-    // 3. Incrementally preload all remaining frames
+    // 3. Incrementally preload all remaining frames in controlled, non-blocking batches
+    // Concurrency is restricted to 4 so network pipe and main thread remain silky smooth
     const remaining: number[] = [];
     for (let i = 1; i < TOTAL_FRAMES - 1; i++) {
       if (!priorityIndices.includes(i)) {
@@ -185,18 +225,30 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
       }
     }
 
-    remaining.forEach((idx) => {
-      const img = new Image();
-      img.src = getFrameUrl(idx);
-      img.onload = () => {
-        if (isCancelled) return;
-        imagesRef.current[idx] = img;
-        loadedFlagsRef.current[idx] = true;
-      };
-    });
+    let currentIndex = 0;
+    const CONCURRENCY = 4;
+    let activeWorkers = 0;
+
+    const pumpQueue = () => {
+      if (isCancelled) return;
+      while (activeWorkers < CONCURRENCY && currentIndex < remaining.length) {
+        const nextIdx = remaining[currentIndex++];
+        activeWorkers++;
+        loadFrame(nextIdx, () => {
+          activeWorkers--;
+          pumpQueue();
+        });
+      }
+    };
+
+    // Stagger background queue start so Frame 0 and initial paint receive 100% CPU and network focus
+    const timer = setTimeout(() => {
+      pumpQueue();
+    }, 120);
 
     return () => {
       isCancelled = true;
+      clearTimeout(timer);
     };
   }, [drawFramePair]);
 
@@ -284,7 +336,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
             ref={bgCanvasRef}
             width={960}
             height={540}
-            className={`w-full h-full object-cover scale-110 filter blur-2xl md:blur-3xl brightness-70 contrast-95 opacity-60 transition-opacity duration-700 ${
+            className={`w-full h-full object-cover scale-110 filter blur-2xl md:blur-3xl brightness-70 contrast-95 opacity-60 transition-opacity duration-500 ${
               isLoaded ? "opacity-60" : "opacity-0"
             }`}
           />
@@ -300,7 +352,7 @@ export function ScrollCinematicIntro({ onEnterPortfolio }: ScrollCinematicIntroP
               ref={canvasRef}
               width={1920}
               height={1080}
-              className={`w-full h-full object-contain pointer-events-none select-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.85)] drop-shadow-[0_0_35px_rgba(0,0,0,0.7)] transition-opacity duration-700 ${
+              className={`w-full h-full object-contain pointer-events-none select-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.85)] drop-shadow-[0_0_35px_rgba(0,0,0,0.7)] transition-opacity duration-500 ${
                 isLoaded ? "opacity-100" : "opacity-0"
               }`}
             />

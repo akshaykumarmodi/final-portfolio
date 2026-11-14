@@ -17,8 +17,8 @@ function getCachedJourney(): JourneyMilestone[] | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Discard stale legacy cache that starts with old m-02 milestone
-      if (parsed[0]?.id === "m-02-learning") {
+      // Discard stale legacy cache that starts with old m-02 milestone or does not start with m-01-start
+      if (parsed[0]?.id === "m-02-learning" || parsed[0]?.id !== "m-01-start") {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(CUSTOMIZED_KEY);
         return null;
@@ -47,11 +47,8 @@ function saveCachedJourney(milestonesList: JourneyMilestone[], isCustomized = tr
 export function useJourney() {
   const [milestones, setMilestones] = useState<JourneyMilestone[]>(() => {
     if (typeof window !== "undefined") {
-      const isCustomized = localStorage.getItem(CUSTOMIZED_KEY) === "true";
-      if (isCustomized) {
-        const cached = getCachedJourney();
-        if (cached && cached.length > 0) return cached;
-      }
+      const cached = getCachedJourney();
+      if (cached && cached.length > 0) return cached;
     }
     return JOURNEY_MILESTONES;
   });
@@ -68,21 +65,42 @@ export function useJourney() {
       setIsLoading(true);
       setError(null);
 
+      // Clean up stale cache if detected
+      if (typeof window !== "undefined") {
+        const cached = getCachedJourney();
+        if (cached && (cached[0]?.id !== "m-01-start" || !cached[0]?.title?.includes("Pursuing B.Tech"))) {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(CUSTOMIZED_KEY);
+        }
+      }
+
       let serverData: JourneyMilestone[] | null = null;
+
+      // 1. Fetch directly from the shared REST API endpoint (/api/journey) with cache-busting
       try {
-        serverData = await fetchJourneyFn();
-      } catch {
-        // Fallback to /api/journey REST endpoint on edge/serverless environments
-        try {
-          if (typeof window !== "undefined") {
-            const res = await fetch("/api/journey");
-            if (res.ok) {
-              const json = await res.json();
-              if (Array.isArray(json) && json.length > 0) {
-                serverData = json;
-              }
+        if (typeof window !== "undefined") {
+          const res = await fetch(`/api/journey?t=${Date.now()}`, {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json) && json.length > 0) {
+              serverData = json;
             }
           }
+        }
+      } catch (e) {
+        console.warn("[Journey] /api/journey fetch notice:", e);
+      }
+
+      // 2. Fallback to RPC server function if /api/journey did not return
+      if (!serverData) {
+        try {
+          serverData = await fetchJourneyFn();
         } catch {}
       }
 
@@ -90,22 +108,11 @@ export function useJourney() {
         typeof window !== "undefined" &&
         localStorage.getItem(CUSTOMIZED_KEY) === "true";
 
+      // 3. Single source of truth update:
+      // When server returns valid milestones, both desktop and mobile synchronize to the server data
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        if (isCustomized) {
-          const cached = getCachedJourney();
-          if (cached && cached.length > 0) {
-            // Retain user's custom milestones across page refreshes
-            setMilestones(cached);
-
-            // Re-sync server container if token is available and server lacks updates
-            const token = getAdminToken();
-            if (token && JSON.stringify(cached) !== JSON.stringify(serverData)) {
-              reorderMilestonesFn({ data: { token, milestones: cached } }).catch(() => {});
-            }
-            return;
-          }
-        }
         setMilestones(serverData);
+        saveCachedJourney(serverData, isCustomized);
       } else {
         if (isCustomized) {
           const cached = getCachedJourney();
@@ -115,6 +122,7 @@ export function useJourney() {
           }
         }
         setMilestones(JOURNEY_MILESTONES);
+        saveCachedJourney(JOURNEY_MILESTONES, false);
       }
     } catch (err) {
       console.warn("[Journey] Server load notice, keeping active cached data:", err);
@@ -125,14 +133,16 @@ export function useJourney() {
         const cached = getCachedJourney();
         if (cached && cached.length > 0) {
           setMilestones(cached);
+          return;
         }
       }
+      setMilestones(JOURNEY_MILESTONES);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Listen for storage events and cross-tab/cross-component updates
+  // Listen for storage events, cross-tab updates, window focus, and visibilitychange
   useEffect(() => {
     loadMilestones();
 
@@ -159,12 +169,26 @@ export function useJourney() {
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadMilestones();
+      }
+    };
+
+    const handleFocus = () => {
+      loadMilestones();
+    };
+
     window.addEventListener("akm:journey-updated", handleJourneyUpdated);
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("akm:journey-updated", handleJourneyUpdated);
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [loadMilestones]);
 
@@ -176,44 +200,57 @@ export function useJourney() {
   // Add milestone (Admin operation)
   const addMilestone = async (data: Partial<JourneyMilestone>) => {
     const token = getAdminToken();
-    let created: JourneyMilestone;
+    const maxSort = milestones.reduce((m, item) => Math.max(m, item.sortOrder), 0);
+    const id = data.id || `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const created: JourneyMilestone = {
+      id,
+      slug:
+        data.slug ||
+        (data.title ? data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `milestone-${Date.now()}`),
+      stage: data.stage || "building",
+      title: data.title || "New Milestone",
+      subtitle: data.subtitle || "",
+      description: data.description || "",
+      year: data.year || new Date().getFullYear().toString(),
+      dateRange: data.dateRange || data.year || "",
+      category: data.category || "Milestone",
+      iconName: data.iconName || "Sparkles",
+      status: data.status || "completed",
+      highlighted: data.highlighted ?? false,
+      published: data.published ?? true,
+      sortOrder: data.sortOrder ?? maxSort + 1,
+      tags: data.tags || [],
+      createdAt: new Date().toISOString(),
+      ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}),
+    };
 
+    const next = [...milestones.filter((m) => m.id !== created.id), created].sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+
+    setMilestones(next);
+    saveCachedJourney(next, true);
+
+    // 1. Sync to shared /api/journey REST backend
     try {
-      created = await saveMilestoneFn({ data: { token, milestone: data } });
-    } catch (err) {
-      console.warn("[Journey] Server add failed, applying local fallback:", err);
-      const maxSort = milestones.reduce((m, item) => Math.max(m, item.sortOrder), 0);
-      const id = data.id || `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      created = {
-        id,
-        slug:
-          data.slug ||
-          (data.title ? data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `milestone-${Date.now()}`),
-        stage: data.stage || "building",
-        title: data.title || "New Milestone",
-        subtitle: data.subtitle || "",
-        description: data.description || "",
-        year: data.year || new Date().getFullYear().toString(),
-        dateRange: data.dateRange || data.year || "",
-        category: data.category || "Milestone",
-        iconName: data.iconName || "Sparkles",
-        status: data.status || "completed",
-        highlighted: data.highlighted ?? false,
-        published: data.published ?? true,
-        sortOrder: data.sortOrder ?? maxSort + 1,
-        tags: data.tags || [],
-        createdAt: new Date().toISOString(),
-        ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}),
-      };
+      if (typeof window !== "undefined") {
+        await fetch("/api/journey", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ milestone: created, milestones: next }),
+        });
+      }
+    } catch (e) {
+      console.warn("[Journey] /api/journey add notice:", e);
     }
 
-    setMilestones((prev) => {
-      const next = [...prev.filter((m) => m.id !== created.id), created].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      saveCachedJourney(next, true);
-      return next;
-    });
+    // 2. Sync to serverFn
+    try {
+      await saveMilestoneFn({ data: { token, milestone: created } });
+    } catch {}
 
     return created;
   };
@@ -221,26 +258,39 @@ export function useJourney() {
   // Update milestone (Admin operation)
   const updateMilestone = async (id: string, updates: Partial<JourneyMilestone>) => {
     const token = getAdminToken();
-    let updated: JourneyMilestone;
+    const current = milestones.find((m) => m.id === id);
+    if (!current) throw new Error("Milestone not found");
+    const updated: JourneyMilestone = { ...current, ...updates };
 
+    const next = milestones.map((m) => (m.id === id ? updated : m)).sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+
+    setMilestones(next);
+    saveCachedJourney(next, true);
+
+    // 1. Sync to shared /api/journey REST backend
     try {
-      updated = await saveMilestoneFn({
-        data: { token, milestone: { ...updates, id } },
-      });
-    } catch (err) {
-      console.warn("[Journey] Server update failed, applying local fallback:", err);
-      const current = milestones.find((m) => m.id === id);
-      if (!current) throw new Error("Milestone not found");
-      updated = { ...current, ...updates };
+      if (typeof window !== "undefined") {
+        await fetch("/api/journey", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ milestone: updated, milestones: next }),
+        });
+      }
+    } catch (e) {
+      console.warn("[Journey] /api/journey update notice:", e);
     }
 
-    setMilestones((prev) => {
-      const next = prev.map((m) => (m.id === id ? { ...m, ...updated } : m)).sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      saveCachedJourney(next, true);
-      return next;
-    });
+    // 2. Sync to serverFn
+    try {
+      await saveMilestoneFn({
+        data: { token, milestone: { ...updates, id } },
+      });
+    } catch {}
 
     return updated;
   };
@@ -248,17 +298,31 @@ export function useJourney() {
   // Delete milestone (Admin operation)
   const deleteMilestone = async (id: string) => {
     const token = getAdminToken();
+    const next = milestones.filter((m) => m.id !== id);
+
+    setMilestones(next);
+    saveCachedJourney(next, true);
+
+    // 1. Sync to shared /api/journey REST backend
     try {
-      await deleteMilestoneFn({ data: { token, id } });
-    } catch (err) {
-      console.warn("[Journey] Server delete failed, applying local fallback:", err);
+      if (typeof window !== "undefined") {
+        await fetch("/api/journey", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ deleteId: id, milestones: next }),
+        });
+      }
+    } catch (e) {
+      console.warn("[Journey] /api/journey delete notice:", e);
     }
 
-    setMilestones((prev) => {
-      const next = prev.filter((m) => m.id !== id);
-      saveCachedJourney(next, true);
-      return next;
-    });
+    // 2. Sync to serverFn
+    try {
+      await deleteMilestoneFn({ data: { token, id } });
+    } catch {}
 
     return true;
   };
@@ -267,9 +331,27 @@ export function useJourney() {
   const reorderMilestones = async (reordered: JourneyMilestone[]) => {
     const token = getAdminToken();
     const updated = reordered.map((m, idx) => ({ ...m, sortOrder: idx + 1 }));
+
     setMilestones(updated);
     saveCachedJourney(updated, true);
 
+    // 1. Sync to shared /api/journey REST backend
+    try {
+      if (typeof window !== "undefined") {
+        await fetch("/api/journey", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ milestones: updated }),
+        });
+      }
+    } catch (e) {
+      console.warn("[Journey] /api/journey reorder notice:", e);
+    }
+
+    // 2. Sync to serverFn
     try {
       const res = await reorderMilestonesFn({ data: { token, milestones: updated } });
       if (res && Array.isArray(res) && res.length > 0) {
@@ -277,9 +359,7 @@ export function useJourney() {
         saveCachedJourney(res, true);
         return res;
       }
-    } catch (err) {
-      console.warn("[Journey] Server reorder notice:", err);
-    }
+    } catch {}
 
     return updated;
   };
@@ -289,9 +369,26 @@ export function useJourney() {
     const token = getAdminToken();
     if (typeof window !== "undefined") {
       localStorage.removeItem(CUSTOMIZED_KEY);
+      localStorage.removeItem(STORAGE_KEY);
     }
     setMilestones(JOURNEY_MILESTONES);
     saveCachedJourney(JOURNEY_MILESTONES, false);
+
+    // 1. Sync to shared /api/journey REST backend
+    try {
+      if (typeof window !== "undefined") {
+        await fetch("/api/journey", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ action: "reset", milestones: JOURNEY_MILESTONES }),
+        });
+      }
+    } catch {}
+
+    // 2. Sync to serverFn
     if (token) {
       try {
         await reorderMilestonesFn({ data: { token, milestones: JOURNEY_MILESTONES } });

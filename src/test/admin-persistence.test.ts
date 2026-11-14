@@ -177,5 +177,136 @@ describe("Admin & Content Persistence Engine", () => {
       expect(result.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
       expect(result.current.allMilestones[4]?.title).toBe("Shipping Real-World Systems");
     });
+
+    it("synchronizes desktop and mobile devices from the shared /api/journey single source of truth", async () => {
+      const globalFetch = global.fetch;
+      const mockSharedMilestones = [
+        {
+          id: "m-01-start",
+          slug: "the-beginning",
+          stage: "start",
+          title: "Pursuing B.Tech",
+          subtitle: "Newton School of Technology, Rishihood University",
+          description: "Updated description synced across all devices",
+          year: "2024",
+          dateRange: "Aug 2024",
+          category: "Genesis",
+          iconName: "Compass",
+          status: "completed",
+          highlighted: false,
+          published: true,
+          sortOrder: 1,
+          tags: ["Algorithms"],
+        },
+        {
+          id: "m-02-learning",
+          slug: "foundations-mastery",
+          stage: "learning",
+          title: "Mastering the Modern Stack",
+          subtitle: "Frontend Architecture",
+          description: "Deep dive",
+          year: "2024",
+          dateRange: "Late 2024",
+          category: "Core Skills",
+          iconName: "Code2",
+          status: "completed",
+          highlighted: false,
+          published: true,
+          sortOrder: 2,
+          tags: ["TypeScript"],
+        },
+        {
+          id: "m-03-building",
+          slug: "creative-engineering",
+          stage: "building",
+          title: "Creative Engineering & 3D Web",
+          subtitle: "Interactive Digital Experiences",
+          description: "WebGL",
+          year: "2025",
+          dateRange: "Early 2025",
+          category: "Creative Tech",
+          iconName: "Sparkles",
+          status: "completed",
+          highlighted: false,
+          published: true,
+          sortOrder: 3,
+          tags: ["Three.js"],
+        },
+        {
+          id: "m-04-hackathons",
+          slug: "hackathons-and-sprints",
+          stage: "hackathons",
+          title: "Competitive Hackathons",
+          subtitle: "Innovation",
+          description: "Hackathons",
+          year: "2026",
+          dateRange: "Mid 2026",
+          category: "Competitions",
+          iconName: "Trophy",
+          status: "in-progress",
+          highlighted: false,
+          published: true,
+          sortOrder: 4,
+          tags: ["Hackathons"],
+        },
+        {
+          id: "m-05-projects",
+          slug: "shipping-real-products",
+          stage: "projects",
+          title: "Shipping Real-World Systems",
+          subtitle: "TrustMesh",
+          description: "Products",
+          year: "2026",
+          dateRange: "2026",
+          category: "Products & Open Source",
+          iconName: "Rocket",
+          status: "completed",
+          highlighted: false,
+          published: true,
+          sortOrder: 5,
+          tags: ["TrustMesh"],
+        },
+      ];
+
+      // Mock /api/journey response
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && url.includes("/api/journey")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockSharedMilestones,
+          });
+        }
+        return Promise.resolve({ ok: false });
+      });
+
+      try {
+        // Desktop load
+        const { result: desktopResult } = renderHook(() => useJourney());
+        await act(async () => {
+          await desktopResult.current.refreshMilestones();
+        });
+        expect(desktopResult.current.allMilestones.length).toBe(5);
+        expect(desktopResult.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
+        expect(desktopResult.current.allMilestones[0]?.description).toBe(
+          "Updated description synced across all devices",
+        );
+
+        // Mobile load (fresh device context)
+        const { result: mobileResult } = renderHook(() => useJourney());
+        await act(async () => {
+          await mobileResult.current.refreshMilestones();
+        });
+        expect(mobileResult.current.allMilestones.length).toBe(5);
+        expect(mobileResult.current.allMilestones[0]?.title).toBe("Pursuing B.Tech");
+        expect(mobileResult.current.allMilestones[0]?.description).toBe(
+          "Updated description synced across all devices",
+        );
+
+        // Both devices have identical data
+        expect(desktopResult.current.allMilestones).toEqual(mobileResult.current.allMilestones);
+      } finally {
+        global.fetch = globalFetch;
+      }
+    });
   });
 });

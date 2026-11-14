@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-const MILESTONES = [
+const DEFAULT_MILESTONES = [
   {
     id: "m-01-start",
     slug: "the-beginning",
@@ -98,11 +98,15 @@ const MILESTONES = [
   },
 ];
 
-export default function handler(req: IncomingMessage, res: ServerResponse): void {
+let liveMilestones = [...DEFAULT_MILESTONES];
+
+export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   res.setHeader("Content-Type", "application/json");
 
   if (req.method === "OPTIONS") {
@@ -111,6 +115,73 @@ export default function handler(req: IncomingMessage, res: ServerResponse): void
     return;
   }
 
+  // Handle write operations (POST, PUT, DELETE)
+  if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+    }
+    try {
+      const data = JSON.parse(body || "{}");
+
+      if (data.action === "reset") {
+        liveMilestones = [...DEFAULT_MILESTONES];
+      } else if (Array.isArray(data.milestones) && data.milestones.length > 0) {
+        liveMilestones = data.milestones;
+      } else if (req.method === "DELETE" || data.deleteId) {
+        const idToDelete = data.deleteId || data.id;
+        if (idToDelete) {
+          liveMilestones = liveMilestones.filter((m: any) => m.id !== idToDelete);
+        }
+      } else if (data.milestone && data.milestone.id) {
+        const idx = liveMilestones.findIndex((m: any) => m.id === data.milestone.id);
+        if (idx !== -1) {
+          liveMilestones[idx] = { ...liveMilestones[idx], ...data.milestone };
+        } else {
+          liveMilestones.push(data.milestone);
+        }
+      }
+
+      // Try persisting to tmpdir disk store if available
+      try {
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+        const os = await import("node:os");
+        const storeDir = path.join(os.tmpdir(), "akm-portfolio-data");
+        if (!fs.existsSync(storeDir)) {
+          fs.mkdirSync(storeDir, { recursive: true });
+        }
+        fs.writeFileSync(
+          path.join(storeDir, "journey.json"),
+          JSON.stringify(liveMilestones, null, 2),
+          "utf8"
+        );
+      } catch {}
+
+      res.statusCode = 200;
+      res.end(JSON.stringify(liveMilestones));
+      return;
+    } catch {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: "Invalid JSON body" }));
+      return;
+    }
+  }
+
+  // GET: Attempt reading from tmpdir store if available
+  try {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const storeFile = path.join(os.tmpdir(), "akm-portfolio-data", "journey.json");
+    if (fs.existsSync(storeFile)) {
+      const parsed = JSON.parse(fs.readFileSync(storeFile, "utf8"));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        liveMilestones = parsed;
+      }
+    }
+  } catch {}
+
   res.statusCode = 200;
-  res.end(JSON.stringify(MILESTONES));
+  res.end(JSON.stringify(liveMilestones));
 }

@@ -130,106 +130,66 @@ const CANONICAL_MILESTONES: JourneyMilestone[] = [
   },
 ];
 
-function getStorePaths() {
-  const isServerless = Boolean(
-    process.env["VERCEL"] ||
-    process.env["AWS_LAMBDA_FUNCTION_NAME"] ||
-    process.env["NOW_REGION"]
-  );
+let memoryMilestones: JourneyMilestone[] = [...CANONICAL_MILESTONES];
 
-  const baseDir = isServerless
-    ? path.join(os.tmpdir(), "akm-portfolio-data")
-    : path.join(process.cwd(), "data");
-
-  const bundledDir = path.join(process.cwd(), "data");
-  const tmpJourneyPath = path.join(os.tmpdir(), "akm-portfolio-data", "journey.json");
-  const tmpDbPath = path.join(baseDir, "portfolio-db.json");
-  const bundledDbPath = path.join(bundledDir, "portfolio-db.json");
-
-  return {
-    baseDir,
-    tmpJourneyPath,
-    tmpDbPath,
-    bundledDbPath,
-  };
+function getTmpFilePath(): string {
+  try {
+    return path.join(os.tmpdir(), "akm_portfolio_journey.json");
+  } catch {
+    return "/tmp/akm_portfolio_journey.json";
+  }
 }
 
-function loadPersistedMilestones(): JourneyMilestone[] {
-  const { tmpJourneyPath, tmpDbPath, bundledDbPath } = getStorePaths();
-
-  // 1. Try reading active runtime journey store in tmpdir
+function readStoredMilestones(): JourneyMilestone[] {
   try {
-    if (fs.existsSync(tmpJourneyPath)) {
-      const raw = fs.readFileSync(tmpJourneyPath, "utf8");
+    const filePath = getTmpFilePath();
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, "utf8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
   } catch {}
-
-  // 2. Try reading active tmpdb in tmpdir
-  try {
-    if (fs.existsSync(tmpDbPath)) {
-      const raw = fs.readFileSync(tmpDbPath, "utf8");
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.journey) && parsed.journey.length > 0) {
-        return parsed.journey;
-      }
-    }
-  } catch {}
-
-  // 3. Try reading bundled portfolio-db.json
-  try {
-    if (fs.existsSync(bundledDbPath)) {
-      const raw = fs.readFileSync(bundledDbPath, "utf8");
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.journey) && parsed.journey.length > 0) {
-        return parsed.journey;
-      }
-    }
-  } catch {}
-
-  // 4. Canonical baseline
-  return [...CANONICAL_MILESTONES];
+  return memoryMilestones;
 }
 
-function savePersistedMilestones(milestones: JourneyMilestone[]) {
-  const { baseDir, tmpJourneyPath, tmpDbPath, bundledDbPath } = getStorePaths();
-
-  // 1. Save to tmpdir runtime store
+function writeStoredMilestones(data: JourneyMilestone[]): void {
+  memoryMilestones = data;
   try {
-    if (!fs.existsSync(baseDir)) {
-      fs.mkdirSync(baseDir, { recursive: true });
-    }
-    fs.writeFileSync(tmpJourneyPath, JSON.stringify(milestones, null, 2), "utf8");
+    const filePath = getTmpFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
   } catch {}
+}
 
-  // 2. Save into tmpDbPath
-  try {
-    let dbObj: any = { journey: milestones };
-    if (fs.existsSync(tmpDbPath)) {
+function parseBody(req: any): Promise<any> {
+  return new Promise((resolve) => {
+    if (req.body && typeof req.body === "object") {
+      return resolve(req.body);
+    }
+    if (typeof req.body === "string") {
       try {
-        dbObj = JSON.parse(fs.readFileSync(tmpDbPath, "utf8"));
-      } catch {}
+        return resolve(JSON.parse(req.body));
+      } catch {
+        return resolve({});
+      }
     }
-    dbObj.journey = milestones;
-    fs.writeFileSync(tmpDbPath, JSON.stringify(dbObj, null, 2), "utf8");
-  } catch {}
-
-  // 3. If running in writable local filesystem, sync to data/portfolio-db.json
-  try {
-    if (fs.existsSync(bundledDbPath)) {
-      const fullDb = JSON.parse(fs.readFileSync(bundledDbPath, "utf8"));
-      fullDb.journey = milestones;
-      fs.writeFileSync(bundledDbPath, JSON.stringify(fullDb, null, 2), "utf8");
-    }
-  } catch {}
+    let raw = "";
+    req.on("data", (chunk: any) => {
+      raw += chunk;
+    });
+    req.on("end", () => {
+      try {
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch {
+        resolve({});
+      }
+    });
+    req.on("error", () => resolve({}));
+  });
 }
 
-let liveMilestones: JourneyMilestone[] = loadPersistedMilestones();
-
-export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export default async function handler(req: any, res: any): Promise<void> {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -239,61 +199,65 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.setHeader("Content-Type", "application/json");
 
   if (req.method === "OPTIONS") {
-    res.statusCode = 200;
-    res.end();
+    if (typeof res.status === "function") {
+      res.status(200).end();
+    } else {
+      res.statusCode = 200;
+      res.end();
+    }
     return;
-  }
-
-  // Reload latest persisted state if memory is fresh
-  if (!liveMilestones || liveMilestones.length === 0) {
-    liveMilestones = loadPersistedMilestones();
   }
 
   // Handle write operations (POST, PUT, DELETE)
   if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
-    let body = "";
-    for await (const chunk of req) {
-      body += chunk;
-    }
     try {
-      const data = JSON.parse(body || "{}");
+      const data = await parseBody(req);
+      let current = [...readStoredMilestones()];
 
       if (data.action === "reset") {
-        liveMilestones = [...CANONICAL_MILESTONES];
+        current = [...CANONICAL_MILESTONES];
       } else if (Array.isArray(data.milestones) && data.milestones.length > 0) {
-        liveMilestones = data.milestones;
+        current = data.milestones;
       } else if (req.method === "DELETE" || data.deleteId) {
         const idToDelete = data.deleteId || data.id;
         if (idToDelete) {
-          liveMilestones = liveMilestones.filter((m: any) => m.id !== idToDelete);
+          current = current.filter((m: any) => m.id !== idToDelete);
         }
       } else if (data.milestone && data.milestone.id) {
-        const idx = liveMilestones.findIndex((m: any) => m.id === data.milestone.id);
+        const idx = current.findIndex((m: any) => m.id === data.milestone.id);
         if (idx !== -1) {
-          liveMilestones[idx] = { ...liveMilestones[idx], ...data.milestone };
+          current[idx] = { ...current[idx], ...data.milestone };
         } else {
-          liveMilestones.push(data.milestone);
+          current.push(data.milestone);
         }
       }
 
-      savePersistedMilestones(liveMilestones);
+      writeStoredMilestones(current);
 
-      res.statusCode = 200;
-      res.end(JSON.stringify(liveMilestones));
+      if (typeof res.status === "function") {
+        res.status(200).json(current);
+      } else {
+        res.statusCode = 200;
+        res.end(JSON.stringify(current));
+      }
       return;
     } catch {
-      res.statusCode = 400;
-      res.end(JSON.stringify({ error: "Invalid JSON body" }));
+      if (typeof res.status === "function") {
+        res.status(400).json({ error: "Invalid request body" });
+      } else {
+        res.statusCode = 400;
+        res.end(JSON.stringify({ error: "Invalid request body" }));
+      }
       return;
     }
   }
 
-  // GET: Always reload from persistent disk store if available to catch updates from admin
-  const current = loadPersistedMilestones();
-  if (current && current.length > 0) {
-    liveMilestones = current;
+  // GET: Always return the latest stored milestones
+  const activeMilestones = readStoredMilestones();
+  if (typeof res.status === "function") {
+    res.status(200).json(activeMilestones);
+  } else {
+    res.statusCode = 200;
+    res.end(JSON.stringify(activeMilestones));
   }
-
-  res.statusCode = 200;
-  res.end(JSON.stringify(liveMilestones));
 }

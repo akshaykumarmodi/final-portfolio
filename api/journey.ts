@@ -1,104 +1,124 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { JOURNEY_MILESTONES, type JourneyMilestone } from "../src/content/journey";
 
-const DEFAULT_MILESTONES = [
-  {
-    id: "m-01-start",
-    slug: "the-beginning",
-    stage: "start",
-    title: "Pursuing B.Tech",
-    subtitle: "Newton School of Technology, Rishihood University",
-    description:
-      "Pursuing B.Tech in Computer Science & Artificial Intelligence. Built first algorithmic foundations and discovered the passion for turning logical code into creative digital experiences.",
-    year: "2024",
-    dateRange: "Aug 2024",
-    category: "Genesis",
-    iconName: "Compass",
-    status: "completed",
-    highlighted: false,
-    published: true,
-    sortOrder: 1,
-    tags: ["Algorithms", "Python", "Computer Science"],
-    imageUrl: "/assets/milestones/m2-learning.svg",
-  },
-  {
-    id: "m-02-learning",
-    slug: "foundations-mastery",
-    stage: "learning",
-    title: "Mastering the Modern Stack",
-    subtitle: "Frontend Architecture & System Internals",
-    description:
-      "Deep-dived into modern TypeScript, distributed architectures, database design, and applied LLM engineering. Began crafting custom GLSL shaders and WebGL graphics experiments.",
-    year: "2024",
-    dateRange: "Late 2024",
-    category: "Core Skills",
-    iconName: "Code2",
-    status: "completed",
-    highlighted: false,
-    published: true,
-    sortOrder: 2,
-    tags: ["React", "TypeScript", "WebGL", "FastAPI"],
-    imageUrl: "/assets/milestones/m2-learning.svg",
-  },
-  {
-    id: "m-03-building",
-    slug: "creative-engineering",
-    stage: "building",
-    title: "Creative Engineering & 3D Web",
-    subtitle: "Interactive Digital Experiences",
-    description:
-      "Engineered physics-based simulations, custom GLSL visual shaders, procedural Web Audio engines, and rich 3D user interfaces. Blending mathematical precision with artistic storytelling.",
-    year: "2025",
-    dateRange: "Early 2025",
-    category: "Creative Tech",
-    iconName: "Sparkles",
-    status: "completed",
-    highlighted: false,
-    published: true,
-    sortOrder: 3,
-    tags: ["Three.js", "Shaders", "Framer Motion", "Web Audio"],
-    imageUrl: "/assets/milestones/m3-building.svg",
-  },
-  {
-    id: "m-04-hackathons",
-    slug: "hackathons-and-sprints",
-    stage: "hackathons",
-    title: "Competitive Hackathons",
-    subtitle: "Rapid Prototyping & Innovation",
-    description:
-      "Collaborated in intensive 24-48 hour hackathons, shipping functional AI prototypes, solving developer reputation challenges, and demoing live to developer and open-source communities.",
-    year: "2026",
-    dateRange: "Mid 2026",
-    category: "Competitions",
-    iconName: "Trophy",
-    status: "in-progress",
-    highlighted: false,
-    published: true,
-    sortOrder: 4,
-    tags: ["Hackathons", "Rapid Shipping", "Team Leadership"],
-    imageUrl: "/assets/milestones/m4-hackathons.svg",
-  },
-  {
-    id: "m-05-projects",
-    slug: "shipping-real-products",
-    stage: "projects",
-    title: "Shipping Real-World Systems",
-    subtitle: "TrustMesh & Study Tutor AI",
-    description:
-      "Shipped TrustMesh (an open-source contributor reputation network against AI slop) and Study Tutor AI (an adaptive interactive educational learning assistant) for active users.",
-    year: "2026",
-    dateRange: "2026",
-    category: "Products & Open Source",
-    iconName: "Rocket",
-    status: "completed",
-    highlighted: false,
-    published: true,
-    sortOrder: 5,
-    tags: ["TrustMesh", "Study Tutor AI", "Open Source"],
-    imageUrl: "/assets/milestones/m5-projects.svg",
-  },
-];
+function getStorePaths() {
+  const isServerless = Boolean(
+    process.env["VERCEL"] ||
+    process.env["AWS_LAMBDA_FUNCTION_NAME"] ||
+    process.env["NOW_REGION"]
+  );
 
-let liveMilestones = [...DEFAULT_MILESTONES];
+  const baseDir = isServerless
+    ? path.join(os.tmpdir(), "akm-portfolio-data")
+    : path.join(process.cwd(), "data");
+
+  const bundledDir = path.join(process.cwd(), "data");
+  const tmpJourneyPath = path.join(os.tmpdir(), "akm-portfolio-data", "journey.json");
+  const tmpDbPath = path.join(baseDir, "portfolio-db.json");
+  const bundledDbPath = path.join(bundledDir, "portfolio-db.json");
+  const contentJourneyPath = path.join(process.cwd(), "src", "content", "journey.ts");
+
+  return {
+    baseDir,
+    tmpJourneyPath,
+    tmpDbPath,
+    bundledDbPath,
+    contentJourneyPath,
+  };
+}
+
+function loadPersistedMilestones(): JourneyMilestone[] {
+  const { tmpJourneyPath, tmpDbPath, bundledDbPath } = getStorePaths();
+
+  // 1. Try reading active runtime journey store in tmpdir
+  try {
+    if (fs.existsSync(tmpJourneyPath)) {
+      const raw = fs.readFileSync(tmpJourneyPath, "utf8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  // 2. Try reading active tmpdb in tmpdir
+  try {
+    if (fs.existsSync(tmpDbPath)) {
+      const raw = fs.readFileSync(tmpDbPath, "utf8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.journey) && parsed.journey.length > 0) {
+        return parsed.journey;
+      }
+    }
+  } catch {}
+
+  // 3. Try reading bundled portfolio-db.json
+  try {
+    if (fs.existsSync(bundledDbPath)) {
+      const raw = fs.readFileSync(bundledDbPath, "utf8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.journey) && parsed.journey.length > 0) {
+        return parsed.journey;
+      }
+    }
+  } catch {}
+
+  // 4. Canonical baseline
+  return [...JOURNEY_MILESTONES];
+}
+
+function savePersistedMilestones(milestones: JourneyMilestone[]) {
+  const { baseDir, tmpJourneyPath, tmpDbPath, bundledDbPath, contentJourneyPath } = getStorePaths();
+
+  // 1. Save to tmpdir runtime store
+  try {
+    if (!fs.existsSync(baseDir)) {
+      fs.mkdirSync(baseDir, { recursive: true });
+    }
+    fs.writeFileSync(tmpJourneyPath, JSON.stringify(milestones, null, 2), "utf8");
+  } catch {}
+
+  // 2. Save into tmpDbPath
+  try {
+    let dbObj: any = { journey: milestones };
+    if (fs.existsSync(tmpDbPath)) {
+      try {
+        dbObj = JSON.parse(fs.readFileSync(tmpDbPath, "utf8"));
+      } catch {}
+    }
+    dbObj.journey = milestones;
+    fs.writeFileSync(tmpDbPath, JSON.stringify(dbObj, null, 2), "utf8");
+  } catch {}
+
+  // 3. If running in writable local filesystem, sync to data/portfolio-db.json & src/content/journey.ts
+  try {
+    if (fs.existsSync(bundledDbPath)) {
+      const fullDb = JSON.parse(fs.readFileSync(bundledDbPath, "utf8"));
+      fullDb.journey = milestones;
+      fs.writeFileSync(bundledDbPath, JSON.stringify(fullDb, null, 2), "utf8");
+    }
+  } catch {}
+
+  try {
+    if (fs.existsSync(contentJourneyPath)) {
+      const current = fs.readFileSync(contentJourneyPath, "utf8");
+      const marker = "export const JOURNEY_MILESTONES: JourneyMilestone[] = ";
+      const idx = current.indexOf(marker);
+      if (idx !== -1) {
+        const header = current.substring(0, idx + marker.length);
+        const newContent = `${header}${JSON.stringify(milestones, null, 2)};\n`;
+        if (newContent !== current) {
+          fs.writeFileSync(contentJourneyPath, newContent, "utf8");
+        }
+      }
+    }
+  } catch {}
+}
+
+let liveMilestones: JourneyMilestone[] = loadPersistedMilestones();
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -115,6 +135,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
+  // Reload latest persisted state if memory is fresh
+  if (!liveMilestones || liveMilestones.length === 0) {
+    liveMilestones = loadPersistedMilestones();
+  }
+
   // Handle write operations (POST, PUT, DELETE)
   if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
     let body = "";
@@ -125,7 +150,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const data = JSON.parse(body || "{}");
 
       if (data.action === "reset") {
-        liveMilestones = [...DEFAULT_MILESTONES];
+        liveMilestones = [...JOURNEY_MILESTONES];
       } else if (Array.isArray(data.milestones) && data.milestones.length > 0) {
         liveMilestones = data.milestones;
       } else if (req.method === "DELETE" || data.deleteId) {
@@ -142,21 +167,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         }
       }
 
-      // Try persisting to tmpdir disk store if available
-      try {
-        const fs = await import("node:fs");
-        const path = await import("node:path");
-        const os = await import("node:os");
-        const storeDir = path.join(os.tmpdir(), "akm-portfolio-data");
-        if (!fs.existsSync(storeDir)) {
-          fs.mkdirSync(storeDir, { recursive: true });
-        }
-        fs.writeFileSync(
-          path.join(storeDir, "journey.json"),
-          JSON.stringify(liveMilestones, null, 2),
-          "utf8"
-        );
-      } catch {}
+      savePersistedMilestones(liveMilestones);
 
       res.statusCode = 200;
       res.end(JSON.stringify(liveMilestones));
@@ -168,19 +179,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
-  // GET: Attempt reading from tmpdir store if available
-  try {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const os = await import("node:os");
-    const storeFile = path.join(os.tmpdir(), "akm-portfolio-data", "journey.json");
-    if (fs.existsSync(storeFile)) {
-      const parsed = JSON.parse(fs.readFileSync(storeFile, "utf8"));
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        liveMilestones = parsed;
-      }
-    }
-  } catch {}
+  // GET: Always reload from persistent disk store if available to catch updates from admin
+  const current = loadPersistedMilestones();
+  if (current && current.length > 0) {
+    liveMilestones = current;
+  }
 
   res.statusCode = 200;
   res.end(JSON.stringify(liveMilestones));

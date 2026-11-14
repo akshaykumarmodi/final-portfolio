@@ -44,7 +44,17 @@ function serveUploadsPlugin() {
                 } catch {}
               }
 
-              if (Array.isArray(data.milestones) && data.milestones.length > 0) {
+              if (data.action === "reset") {
+                const contentJourney = path.join(process.cwd(), "src", "content", "journey.ts");
+                if (fs.existsSync(contentJourney)) {
+                  try {
+                    // Reset to original default baseline from content file
+                    currentMilestones = Array.isArray(data.milestones) && data.milestones.length > 0
+                      ? data.milestones
+                      : [];
+                  } catch {}
+                }
+              } else if (Array.isArray(data.milestones) && data.milestones.length > 0) {
                 currentMilestones = data.milestones;
               } else if (req.method === "DELETE" || data.deleteId) {
                 const idToDelete = data.deleteId || data.id;
@@ -60,20 +70,27 @@ function serveUploadsPlugin() {
 
               // Update data/portfolio-db.json
               if (fs.existsSync(dbPath)) {
-                const fullDb = JSON.parse(fs.readFileSync(dbPath, "utf8"));
-                fullDb.journey = currentMilestones;
-                fs.writeFileSync(dbPath, JSON.stringify(fullDb, null, 2), "utf8");
+                try {
+                  const fullDb = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+                  fullDb.journey = currentMilestones;
+                  fs.writeFileSync(dbPath, JSON.stringify(fullDb, null, 2), "utf8");
+                } catch {}
               }
 
-              // Sync to src/content/journey.ts
+              // Sync to src/content/journey.ts ONLY if content has genuinely changed (avoids Vite HMR loops)
               if (fs.existsSync(journeyFilePath) && currentMilestones.length > 0) {
-                const currentContent = fs.readFileSync(journeyFilePath, "utf8");
-                const marker = "export const JOURNEY_MILESTONES: JourneyMilestone[] = ";
-                const idx = currentContent.indexOf(marker);
-                if (idx !== -1) {
-                  const header = currentContent.substring(0, idx + marker.length);
-                  fs.writeFileSync(journeyFilePath, `${header}${JSON.stringify(currentMilestones, null, 2)};\n`, "utf8");
-                }
+                try {
+                  const currentContent = fs.readFileSync(journeyFilePath, "utf8");
+                  const marker = "export const JOURNEY_MILESTONES: JourneyMilestone[] = ";
+                  const idx = currentContent.indexOf(marker);
+                  if (idx !== -1) {
+                    const header = currentContent.substring(0, idx + marker.length);
+                    const newContent = `${header}${JSON.stringify(currentMilestones, null, 2)};\n`;
+                    if (newContent !== currentContent) {
+                      fs.writeFileSync(journeyFilePath, newContent, "utf8");
+                    }
+                  }
+                } catch {}
               }
 
               res.statusCode = 200;

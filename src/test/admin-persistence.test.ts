@@ -304,5 +304,47 @@ describe("Admin & Content Persistence Engine", () => {
         global.fetch = globalFetch;
       }
     });
+
+    it("persists milestone edits across simulated refresh and admin navigation", async () => {
+      const { result, unmount } = renderHook(() => useJourney());
+      const firstMilestoneId = result.current.allMilestones[0]!.id;
+
+      await act(async () => {
+        await result.current.updateMilestone(firstMilestoneId, {
+          title: "Pursuing B.Tech with Distinction",
+          subtitle: "AI & Systems Specialization",
+        });
+      });
+
+      expect(result.current.allMilestones[0]?.title).toBe("Pursuing B.Tech with Distinction");
+      expect(result.current.allMilestones[0]?.subtitle).toBe("AI & Systems Specialization");
+
+      // Verify custom flag is active
+      expect(localStorage.getItem("akm_journey_customized")).toBe("true");
+
+      // Simulate refresh / navigation
+      unmount();
+
+      const { result: navResult } = renderHook(() => useJourney());
+      expect(navResult.current.allMilestones[0]?.title).toBe("Pursuing B.Tech with Distinction");
+      expect(navResult.current.allMilestones[0]?.subtitle).toBe("AI & Systems Specialization");
+    });
+
+    it("persists milestone deletion and reordering across simulated refresh", async () => {
+      const { result, unmount } = renderHook(() => useJourney());
+      const milestoneToDelete = result.current.allMilestones[1]!;
+
+      await act(async () => {
+        await result.current.deleteMilestone(milestoneToDelete.id);
+      });
+
+      expect(result.current.allMilestones.some((m) => m.id === milestoneToDelete.id)).toBe(false);
+
+      // Simulate refresh
+      unmount();
+
+      const { result: refreshedResult } = renderHook(() => useJourney());
+      expect(refreshedResult.current.allMilestones.some((m) => m.id === milestoneToDelete.id)).toBe(false);
+    });
   });
 });

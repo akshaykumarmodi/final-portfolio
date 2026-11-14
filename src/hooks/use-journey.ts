@@ -61,18 +61,15 @@ export function useJourney() {
       setIsLoading(true);
       setError(null);
 
-      const cached = getCachedJourney();
       const isCustomizedLocally =
         typeof window !== "undefined" &&
-        (localStorage.getItem(CUSTOMIZED_KEY) === "true" ||
-          (cached && cached.length > 0 && JSON.stringify(cached) !== JSON.stringify(JOURNEY_MILESTONES)));
+        localStorage.getItem(CUSTOMIZED_KEY) === "true";
+
+      const cached = getCachedJourney();
 
       // If user customized journey in the Admin Portal, preserve their customizations across page navigations and refreshes!
       if (isCustomizedLocally && cached && cached.length > 0) {
         setMilestones(cached);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(CUSTOMIZED_KEY, "true");
-        }
 
         // Re-sync server in the background if admin token is present
         const token = getAdminToken();
@@ -122,8 +119,7 @@ export function useJourney() {
       // Check again after async fetch to make sure an admin action didn't customize while waiting
       const hasCustomizedNow =
         typeof window !== "undefined" &&
-        (localStorage.getItem(CUSTOMIZED_KEY) === "true" ||
-          Boolean(getCachedJourney() && JSON.stringify(getCachedJourney()) !== JSON.stringify(JOURNEY_MILESTONES)));
+        localStorage.getItem(CUSTOMIZED_KEY) === "true";
 
       if (hasCustomizedNow) {
         const freshCached = getCachedJourney();
@@ -224,17 +220,15 @@ export function useJourney() {
       ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}),
     };
 
-    let nextResult: JourneyMilestone[] = [];
-    setMilestones((prev) => {
-      const maxSort = prev.reduce((m, item) => Math.max(m, item.sortOrder), 0);
-      const withSort = { ...created, sortOrder: data.sortOrder ?? maxSort + 1 };
-      const next = [...prev.filter((m) => m.id !== withSort.id), withSort].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      nextResult = next;
-      saveCachedJourney(next, true, true);
-      return next;
-    });
+    const currentList = milestones.length > 0 ? milestones : (getCachedJourney() || JOURNEY_MILESTONES);
+    const maxSort = currentList.reduce((m, item) => Math.max(m, item.sortOrder), 0);
+    const withSort = { ...created, sortOrder: data.sortOrder ?? maxSort + 1 };
+    const next = [...currentList.filter((m) => m.id !== withSort.id), withSort].sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+
+    saveCachedJourney(next, true, true);
+    setMilestones(next);
 
     // 1. Sync to shared /api/journey REST backend
     try {
@@ -245,7 +239,7 @@ export function useJourney() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ milestone: created, milestones: nextResult }),
+          body: JSON.stringify({ milestone: withSort, milestones: next }),
         });
       }
     } catch (e) {
@@ -254,30 +248,27 @@ export function useJourney() {
 
     // 2. Sync to serverFn
     try {
-      await saveMilestoneFn({ data: { token, milestone: created } });
+      await saveMilestoneFn({ data: { token, milestone: withSort } });
     } catch {}
 
-    return created;
+    return withSort;
   };
 
   // Update milestone (Admin operation)
   const updateMilestone = async (id: string, updates: Partial<JourneyMilestone>) => {
     const token = getAdminToken();
-    let updatedItem: JourneyMilestone | undefined;
-    let nextResult: JourneyMilestone[] = [];
+    const currentList = milestones.length > 0 ? milestones : (getCachedJourney() || JOURNEY_MILESTONES);
+    const current = currentList.find((m) => m.id === id);
+    const finalItem: JourneyMilestone = current
+      ? { ...current, ...updates, id }
+      : ({ ...updates, id } as JourneyMilestone);
 
-    setMilestones((prev) => {
-      const current = prev.find((m) => m.id === id);
-      updatedItem = current ? { ...current, ...updates } : (updates as JourneyMilestone);
-      const next = prev.map((m) => (m.id === id ? updatedItem! : m)).sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      nextResult = next;
-      saveCachedJourney(next, true, true);
-      return next;
-    });
+    const next = currentList.map((m) => (m.id === id ? finalItem : m)).sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
 
-    const finalItem = updatedItem || ({ ...updates, id } as JourneyMilestone);
+    saveCachedJourney(next, true, true);
+    setMilestones(next);
 
     // 1. Sync to shared /api/journey REST backend
     try {
@@ -288,7 +279,7 @@ export function useJourney() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ milestone: finalItem, milestones: nextResult }),
+          body: JSON.stringify({ milestone: finalItem, milestones: next }),
         });
       }
     } catch (e) {
@@ -308,14 +299,11 @@ export function useJourney() {
   // Delete milestone (Admin operation)
   const deleteMilestone = async (id: string) => {
     const token = getAdminToken();
-    let nextResult: JourneyMilestone[] = [];
+    const currentList = milestones.length > 0 ? milestones : (getCachedJourney() || JOURNEY_MILESTONES);
+    const next = currentList.filter((m) => m.id !== id);
 
-    setMilestones((prev) => {
-      const next = prev.filter((m) => m.id !== id);
-      nextResult = next;
-      saveCachedJourney(next, true, true);
-      return next;
-    });
+    saveCachedJourney(next, true, true);
+    setMilestones(next);
 
     // 1. Sync to shared /api/journey REST backend
     try {
@@ -326,7 +314,7 @@ export function useJourney() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ deleteId: id, milestones: nextResult }),
+          body: JSON.stringify({ deleteId: id, milestones: next }),
         });
       }
     } catch (e) {
@@ -346,8 +334,8 @@ export function useJourney() {
     const token = getAdminToken();
     const updated = reordered.map((m, idx) => ({ ...m, sortOrder: idx + 1 }));
 
-    setMilestones(updated);
     saveCachedJourney(updated, true, true);
+    setMilestones(updated);
 
     // 1. Sync to shared /api/journey REST backend
     try {

@@ -223,7 +223,9 @@ async function persistDb() {
           const header = currentContent.substring(0, idx + marker.length);
           const formatted = JSON.stringify(memoryDb.journey, null, 2);
           const newContent = `${header}${formatted};\n`;
-          fs.writeFileSync(journeyFilePath, newContent, "utf8");
+          if (newContent !== currentContent) {
+            fs.writeFileSync(journeyFilePath, newContent, "utf8");
+          }
         }
       }
     } catch (syncErr) {
@@ -393,10 +395,14 @@ export async function updateMilestone(
 ): Promise<JourneyMilestone> {
   await initDb();
   const index = memoryDb.journey.findIndex((m) => m.id === id);
-  if (index === -1) throw new Error("Milestone not found");
+  if (index === -1) {
+    return await addMilestone({ ...updates, id });
+  }
 
   const current = memoryDb.journey[index];
-  if (!current) throw new Error("Milestone not found");
+  if (!current) {
+    return await addMilestone({ ...updates, id });
+  }
   const oldImage = current.imageUrl;
 
   const updated: JourneyMilestone = {
